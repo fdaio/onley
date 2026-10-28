@@ -1,7 +1,11 @@
 /onley
+/onley-app
 *.db
 *.db-journal
 *.db-wal
 *.db-shm
 coverage.out
 coverage.html
+/cmd/onley-app/dist/
+/.nsgo/
+/cmd/onley-app/.nsgo/

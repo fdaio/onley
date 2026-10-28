@@ -1,6 +1,7 @@
 package scanner
 
 import (
+	"context"
 	"crypto/md5"
 	"fmt"
 	"os"
@@ -40,6 +41,55 @@ func drain(ch <-chan Progress) (ok int, skipped int, errs []error) {
 		}
 	}
 	return
+}
+
+func TestScanContext_CancelledBeforeStart(t *testing.T) {
+	dir := t.TempDir()
+	store := openMemDB(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	done := make(chan struct{})
+	go func() {
+		drain(ScanContext(ctx, dir, store, 4))
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("ScanContext did not stop after cancellation")
+	}
+}
+
+func TestScanContext_CancelThenRescan(t *testing.T) {
+	dir := t.TempDir()
+	for i := range 200 {
+		path := filepath.Join(dir, fmt.Sprintf("file-%03d.txt", i))
+		if err := os.WriteFile(path, fmt.Appendf(nil, "content %d", i), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	store := openMemDB(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	ch := ScanContext(ctx, dir, store, 4)
+	select {
+	case <-ch:
+		cancel()
+	case <-time.After(5 * time.Second):
+		cancel()
+		t.Fatal("scan produced no event")
+	}
+	for range ch {
+	}
+	cancel()
+
+	ok, _, errs := drain(Scan(dir, store, 4))
+	if len(errs) != 0 {
+		t.Fatalf("rescan errors: %v", errs)
+	}
+	if ok != 200 {
+		t.Errorf("rescan indexed %d files, want 200", ok)
+	}
 }
 
 func TestScan_EmptyDir(t *testing.T) {

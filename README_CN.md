@@ -14,6 +14,7 @@
 - 可配置的 goroutine worker 池并发扫描
 - 持续建索引（`watch`）：文件新建、修改、删除时索引自动跟进
 - 交互式清理（`clean`）或自动清理（`clean-all`）
+- NSGo 桌面客户端，支持扫描与清理（预览）
 - 多机模式：replica 将本地索引与 master 对比，删除本地冗余副本，或将独有文件通过 HTTP 迁移到 master
 
 ## 安装
@@ -40,6 +41,41 @@ tar xzf onley_<版本号>_linux_amd64.tar.gz
 git clone https://github.com/Laotree/onley
 cd onley
 make build      # 生成 ./onley
+```
+
+## 桌面客户端（预览）
+
+NSGo 桌面客户端覆盖日常清理闭环：扫描文件夹、查看重复组、每组选择一个保留副本、
+确认后删除其余副本。它和 CLI 共用 `~/.onley/local.db` 索引。
+
+macOS 构建并打开：
+
+```sh
+make app
+# Apple silicon
+open cmd/onley-app/dist/Onley-0.1.0-macos_arm64/Onley.app
+# Intel
+open cmd/onley-app/dist/Onley-0.1.0-macos_x64/Onley.app
+```
+
+构建应用需要 Go 1.27.3 和 Xcode；NSGo 版本固定在 `go.mod`。
+NSGo 仍处于 early 阶段、没有稳定 API，升级应作为独立任务。
+`make app` 构建当前 Mac 架构；`make app-all` 打包 macOS、Windows 和 Linux。
+本轮只验证 macOS 运行；Windows 与 Linux 已验证可构建、可打包，但尚未运行验证。
+
+客户端使用 Midnight Terminal 暗色配色，只做桌面端。手机与 Web 客户端需要
+onley 提供本地服务 API，本预览不做。
+客户端不支持 `watch`、replica、`config` 和自定义 `-db`，这些继续用 CLI。
+扫描路径可以输入或拖入文件夹，暂未提供原生目录选择器。扫描与删除只操作默认
+索引，删除不可撤销。删除前会校验文件大小和修改时间；旧版本建立的索引需要
+重新扫描一次才能记录 mtime。应用未签名，首次打开可能需要在 Finder 中右键
+选择“打开”。第三方声明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+
+无头测试随仓库测试一起跑；macOS 原生 UI 测试需要 Xcode：
+
+```sh
+go test ./...
+cd cmd/onley-app && go tool nsgo test -target macos
 ```
 
 ## 快速上手
