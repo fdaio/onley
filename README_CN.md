@@ -27,10 +27,15 @@ tar xzf onley_<版本号>_darwin_arm64.tar.gz
 
 # Linux（x86-64）
 tar xzf onley_<版本号>_linux_amd64.tar.gz
+
+# macOS 桌面客户端预览（Apple silicon）
+unzip onley-desktop_v<版本号>_macos_arm64.zip
+open Onley.app
 ```
 
 发布范围为 darwin 与 linux 的 amd64 / arm64，以及 windows 的 amd64，
-每个归档旁边都有 `checksums.txt`。见 [releases](https://github.com/Laotree/onley/releases)。
+每个归档旁边都有 `checksums.txt`。桌面客户端预览同时发布 macOS arm64/x64、
+Windows x64 与 Linux x64。见 [releases](https://github.com/Laotree/onley/releases)。
 
 `go install` 不可用，也没有提供：module 路径是 `onley`，不是一个可解析的仓库位置。
 要修就得改每个包的 import 路径，因此没有做。
@@ -47,15 +52,16 @@ make build      # 生成 ./onley
 
 NSGo 桌面客户端覆盖日常清理闭环：扫描文件夹、查看重复组、每组选择一个保留副本、
 确认后删除其余副本。它和 CLI 共用 `~/.onley/local.db` 索引。
+Release 中的桌面包未签名，打开前请阅读下方说明。
 
 macOS 构建并打开：
 
 ```sh
 make app
 # Apple silicon
-open cmd/onley-app/dist/Onley-0.1.0-macos_arm64/Onley.app
+open cmd/onley-app/dist/Onley-0.2.0-macos_arm64/Onley.app
 # Intel
-open cmd/onley-app/dist/Onley-0.1.0-macos_x64/Onley.app
+open cmd/onley-app/dist/Onley-0.2.0-macos_x64/Onley.app
 ```
 
 构建应用需要 Go 1.27.3 和 Xcode；NSGo 版本固定在 `go.mod`。
@@ -335,4 +341,4 @@ make lint       # golangci-lint
 make clean      # 删除二进制文件和覆盖率文件
 ```
 
-运行环境要求：Go 1.26.4 或更高（module 声明的版本）
+运行环境要求：Go 1.27.3 或更高（module 声明的版本）
