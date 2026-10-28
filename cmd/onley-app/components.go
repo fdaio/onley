@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/oneo-me/nsgo/base"
 	"github.com/oneo-me/nsgo/core"
@@ -161,6 +162,20 @@ func copyCount(n int) string {
 		return "1 copy"
 	}
 	return fmt.Sprintf("%d copies", n)
+}
+
+func speedText(bytesPerSecond float64) string {
+	return format.Bytes(int64(bytesPerSecond)) + "/s"
+}
+
+func formatDuration(d time.Duration) string {
+	if d < time.Minute {
+		return fmt.Sprintf("%ds", int(d.Seconds()))
+	}
+	if d < time.Hour {
+		return fmt.Sprintf("%d:%02d", int(d.Minutes()), int(d.Seconds())%60)
+	}
+	return fmt.Sprintf("%d:%02d:%02d", int(d.Hours()), int(d.Minutes())%60, int(d.Seconds())%60)
 }
 
 func shortMD5(md5 string) string {

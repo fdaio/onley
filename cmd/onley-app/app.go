@@ -130,7 +130,6 @@ func (s *state) sidebar(cx *core.Scope) core.Node {
 		Children: []core.Node{core.View{Style: core.Style{Gap: 12, Padding: core.Edges{Bottom: 4}}, Children: []core.Node{
 			s.statsCard(cx),
 			s.scanCard(cx),
-			s.progressCard(cx),
 			s.actionsCard(cx),
 			s.indexCard(cx),
 			s.noteText(cx),
@@ -213,26 +212,37 @@ func (s *state) scanCard(cx *core.Scope) core.Node {
 	}}
 }
 
-func (s *state) progressCard(cx *core.Scope) core.Node {
+func (s *state) scanningPanel(cx *core.Scope) core.Node {
 	c := colorsOf(cx)
-	return core.Show{When: func() bool { return s.scanning.Get() }, Then: func(cx *core.Scope) core.Node {
-		return core.View{Style: cardStyle(c), Children: []core.Node{
-			core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 8}, Children: []core.Node{
-				line("Scanning", 13, core.FontWeightSemibold, c.text),
-				spacer(),
-				appButton(cx, "Cancel", "cancel-scan", buttonSecondary, nil, s.cancelScan),
-			}},
-			base.Progress{
-				Indeterminate:  func() bool { return true },
-				Style:          core.Style{Height: core.Pt(6)},
-				TrackStyle:     core.Style{Background: c.background, CornerRadius: 3},
-				IndicatorStyle: core.Style{Background: c.accent, CornerRadius: 3},
-			},
-			linef(func() string {
-				p := s.progress.Get()
-				return fmt.Sprintf("%d processed · %d skipped · %d errors", p.Done, p.Skipped, p.Errors)
-			}, 11, core.FontWeightNormal, c.muted),
-		}}
+	style := cardStyle(c)
+	style.FlexGrow = 1
+	style.MinHeight = core.Pt(0)
+	style.AlignItems = core.AlignCenter
+	style.JustifyContent = core.JustifyCenter
+	style.Padding = core.All(24)
+	style.Gap = 12
+	return core.View{Style: style, Children: []core.Node{
+		line("Scanning", 22, core.FontWeightSemibold, c.text),
+		core.Text{Content: displayPath(s.scanDir.Get(), s.home), MaxLines: 1,
+			Style: core.Style{FontSize: 12, Color: c.muted}},
+		core.Canvas{
+			Style:  core.Style{Width: core.Pct(100), Height: core.Pt(330)},
+			Draw:   s.drawGauge(c),
+			Label:  "Scan speed gauge",
+			TestID: "speed-gauge",
+		},
+		core.Text{ContentFunc: func() string { return speedText(s.progress.Get().Speed) },
+			TestID: "scan-speed",
+			Style:  core.Style{FontSize: 40, FontWeight: core.FontWeightBold, Color: c.text, TextAlign: core.TextAlignCenter}},
+		linef(func() string {
+			p := s.progress.Get()
+			return fmt.Sprintf("%s hashed · %s · %d skipped · %d errors",
+				format.Bytes(p.Hashed), fileCount(p.Done), p.Skipped, p.Errors)
+		}, 11, core.FontWeightNormal, c.muted),
+		linef(func() string {
+			return "elapsed " + formatDuration(s.progress.Get().Elapsed)
+		}, 11, core.FontWeightNormal, c.muted),
+		appButton(cx, "Cancel scan", "cancel-scan", buttonSecondary, nil, s.cancelScan),
 	}}
 }
 
@@ -282,6 +292,14 @@ func (s *state) noteText(cx *core.Scope) core.Node {
 }
 
 func (s *state) results(cx *core.Scope) core.Node {
+	return core.Show{
+		When: func() bool { return s.scanning.Get() },
+		Then: s.scanningPanel,
+		Else: s.groupsPanel,
+	}
+}
+
+func (s *state) groupsPanel(cx *core.Scope) core.Node {
 	c := colorsOf(cx)
 	return core.View{Style: core.Style{FlexGrow: 1, MinWidth: core.Pt(0), Gap: 10}, Children: []core.Node{
 		core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 10}, Children: []core.Node{

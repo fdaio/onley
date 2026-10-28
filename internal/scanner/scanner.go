@@ -15,15 +15,16 @@ import (
 )
 
 // Progress is emitted for every notable event during a scan.
-// Done=false means a worker just started hashing Path (not yet finished).
-// Done=true  means the file has been fully processed (hashed+upserted or skipped).
+// Done=false means a worker started hashing Path or read more of it.
+// Done=true means the file has been fully processed (hashed+upserted or skipped).
 type Progress struct {
 	Path     string
-	WorkerID int  // which worker (0-indexed)
-	Current  int  // total completed so far (only meaningful when Done=true)
-	Active   int  // number of workers currently hashing
-	Done     bool // false=started, true=finished
-	Skipped  bool // true when file was unchanged and skipped (Done must be true)
+	WorkerID int   // which worker (0-indexed)
+	Current  int   // total completed so far (only meaningful when Done=true)
+	Active   int   // number of workers currently hashing
+	Bytes    int64 // bytes read since the previous event for this file
+	Done     bool  // false=started or reading, true=finished
+	Skipped  bool  // true when file was unchanged and skipped (Done must be true)
 	Err      error
 }
 
@@ -57,6 +58,7 @@ func ScanContext(ctx context.Context, root string, store *db.DB, workers int) <-
 		path     string
 		workerID int
 		active   int
+		read     int64
 		record   *db.FileRecord // non-nil: needs Upsert
 		skipped  bool
 		started  bool // true = worker just started hashing; no record yet
@@ -147,10 +149,15 @@ func ScanContext(ctx context.Context, root string, store *db.DB, workers int) <-
 					}
 
 					n := int(active.Add(1))
-					hash, err := hashFile(j.path)
+					hash, err := hashFileProgress(j.path, func(bytes int64) bool {
+						return send(result{path: j.path, workerID: id, read: bytes})
+					})
 					active.Add(-1)
 
 					if err != nil {
+						if ctx.Err() != nil {
+							return
+						}
 						if !send(result{path: j.path, workerID: id, err: err}) {
 							return
 						}
@@ -201,6 +208,8 @@ func ScanContext(ctx context.Context, root string, store *db.DB, workers int) <-
 			case r.started:
 				// Worker just started hashing — let caller update the display.
 				p = Progress{Path: r.path, WorkerID: r.workerID, Done: false}
+			case r.read > 0:
+				p = Progress{Path: r.path, WorkerID: r.workerID, Bytes: r.read, Done: false}
 			case r.skipped:
 				count++
 				p = Progress{Path: r.path, WorkerID: r.workerID, Current: count, Done: true, Skipped: true}
@@ -270,7 +279,22 @@ func storeUnchanged(store *db.DB, path string, size, mtime int64) (bool, error) 
 	return existing != nil && existing.Size == size && existing.Mtime == mtime, nil
 }
 
+// hashChunk is the buffer hashFileProgress reads at a time. The scan reports
+// each read so a large file moves the speed display before it finishes.
+const hashChunk = 4 << 20
+
+var hashBuffers = sync.Pool{New: func() any {
+	buf := make([]byte, hashChunk)
+	return &buf
+}}
+
 func hashFile(path string) (string, error) {
+	return hashFileProgress(path, nil)
+}
+
+// hashFileProgress hashes path and reports each read to onRead. onRead returning
+// false stops the read, which reports context.Canceled.
+func hashFileProgress(path string, onRead func(int64) bool) (string, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return "", err
@@ -278,8 +302,25 @@ func hashFile(path string) (string, error) {
 	defer f.Close()
 
 	h := md5.New()
-	if _, err := io.Copy(h, f); err != nil {
-		return "", err
+	bufp := hashBuffers.Get().(*[]byte)
+	defer hashBuffers.Put(bufp)
+	buf := *bufp
+	for {
+		n, err := f.Read(buf)
+		if n > 0 {
+			if _, writeErr := h.Write(buf[:n]); writeErr != nil {
+				return "", writeErr
+			}
+			if onRead != nil && !onRead(int64(n)) {
+				return "", context.Canceled
+			}
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return "", err
+		}
 	}
 	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }

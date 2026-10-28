@@ -1,6 +1,7 @@
 package scanner
 
 import (
+	"bytes"
 	"context"
 	"crypto/md5"
 	"fmt"
@@ -305,6 +306,60 @@ func TestScan_RehashesResizedFile(t *testing.T) {
 }
 
 // TestHashFile tests the unexported hashFile directly (same package).
+func TestHashFileProgress(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "large.bin")
+	content := bytes.Repeat([]byte("0123456789abcdef"), 5<<20/16)
+	if err := os.WriteFile(path, content, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var read int64
+	var chunks int
+	hash, err := hashFileProgress(path, func(n int64) bool {
+		read += n
+		chunks++
+		return true
+	})
+	if err != nil {
+		t.Fatalf("hashFileProgress: %v", err)
+	}
+	if read != int64(len(content)) {
+		t.Errorf("read = %d, want %d", read, len(content))
+	}
+	if chunks < 2 {
+		t.Errorf("chunks = %d, want at least 2", chunks)
+	}
+	if want := md5Of(string(content)); hash != want {
+		t.Errorf("hash = %s, want %s", hash, want)
+	}
+}
+
+func TestScan_ReportsReadBytes(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "large.bin")
+	content := bytes.Repeat([]byte("x"), 5<<20)
+	if err := os.WriteFile(path, content, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	store := openMemDB(t)
+
+	var read int64
+	var files int
+	for p := range Scan(dir, store, 2) {
+		read += p.Bytes
+		if p.Done && p.Err == nil {
+			files++
+		}
+	}
+	if read != int64(len(content)) {
+		t.Errorf("read = %d, want %d", read, len(content))
+	}
+	if files != 1 {
+		t.Errorf("files = %d, want 1", files)
+	}
+}
+
 func TestHashFile(t *testing.T) {
 	dir := t.TempDir()
 	content := "hash me"

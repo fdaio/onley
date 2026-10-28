@@ -54,8 +54,9 @@ make build      # produces ./onley
 
 The NSGo desktop client covers the daily cleanup loop: scan a folder, review
 duplicate groups, choose one copy to keep per group, and delete the rest after
-one confirmation. It uses the same `~/.onley/local.db` index as the CLI.
-Release packages are unsigned; see the note below before opening one.
+one confirmation. Scanning shows a live MB/s gauge with a moving needle. It uses
+the same `~/.onley/local.db` index as the CLI. Release packages are unsigned;
+see the note below before opening one.
 
 Build and open it on macOS:
 
