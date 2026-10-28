@@ -251,8 +251,6 @@ func (s *state) actionsCard(cx *core.Scope) core.Node {
 	disabled := func() bool { return s.scanning.Get() || s.busy.Get() }
 	return core.View{Style: cardStyle(c), Children: []core.Node{
 		line("Cleanup", 13, core.FontWeightSemibold, c.text),
-		appButton(cx, "Keep first in every group", "keep-first", buttonSecondary,
-			func() bool { return disabled() || len(s.groups.Get()) == 0 }, s.keepFirst),
 		core.View{Style: core.Style{Direction: core.Row, Gap: 8}, Children: []core.Node{
 			core.View{Style: core.Style{FlexGrow: 1}, Children: []core.Node{
 				appButton(cx, "Refresh index", "refresh", buttonSecondary, disabled, s.refresh),
@@ -392,12 +390,15 @@ func (s *state) actionBar(cx *core.Scope) core.Node {
 				core.Text{ContentFunc: func() string {
 					plan := s.plan()
 					if len(plan.Targets) == 0 {
-						return "Choose the copy to keep in each group."
+						return "Choose a copy, or keep one per group."
 					}
 					return fmt.Sprintf("%s selected · %s reclaimable", fileCount(len(plan.Targets)), format.Bytes(plan.Bytes))
 				}, Style: core.Style{FontSize: 13, FontWeight: core.FontWeightMedium, Color: c.text}},
 				line("Permanent deletion. You will confirm the exact files first.", 11, core.FontWeightNormal, c.muted),
 			}},
+			appButton(cx, "Keep one per group", "auto-keep", buttonSecondary, func() bool {
+				return s.scanning.Get() || s.busy.Get() || len(s.groups.Get()) == 0
+			}, s.autoKeep),
 			appButton(cx, "Review & delete", "review-delete", buttonDanger, func() bool {
 				return s.scanning.Get() || s.busy.Get() || len(s.plan().Targets) == 0
 			}, s.openConfirm),
