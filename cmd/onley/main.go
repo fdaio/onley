@@ -20,6 +20,8 @@ import (
 
 	"github.com/mattn/go-isatty"
 
+	"onley/internal/appdir"
+	"onley/internal/cleaner"
 	"onley/internal/config"
 	"onley/internal/db"
 	"onley/internal/replica"
@@ -31,13 +33,13 @@ import (
 const (
 	// dbDirName and dbFileName make up the default index location under the
 	// home directory.
-	dbDirName  = ".onley"
-	dbFileName = "local.db"
+	dbDirName  = appdir.DirName
+	dbFileName = appdir.DBFileName
 	// legacyDBFile is the working-directory-relative name the index used to
 	// default to.
 	legacyDBFile = "onley.db"
 	// configFileName is the settings file inside dbDirName.
-	configFileName = "config.json"
+	configFileName = appdir.ConfigFileName
 	// masterEnvVar overrides the configured master without touching the file,
 	// which is what a cron job pointing at a different master needs.
 	masterEnvVar = "ONLEY_MASTER"
@@ -268,7 +270,7 @@ func openDB(path string, stderr io.Writer) *db.DB {
 // Falling back to a working-directory path would reintroduce exactly the
 // behaviour this replaces.
 func defaultDBPath(stderr io.Writer) (string, error) {
-	dir, err := onleyDir()
+	dir, err := appdir.Dir()
 	if err != nil {
 		return "", fmt.Errorf("%w, pass -db to choose an index", err)
 	}
@@ -277,34 +279,11 @@ func defaultDBPath(stderr io.Writer) (string, error) {
 	return target, nil
 }
 
-// onleyDir returns ~/.onley, creating it if it does not exist. The index and
-// the settings share it, so both follow the user instead of the working
-// directory.
-//
-// It is 0700 because the index lists the paths and digests of the user's files.
-// The directory is what keeps that private; the modes on the files inside it do
-// not have to be restrictive as well.
-func onleyDir() (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("cannot locate the home directory: %w", err)
-	}
-	dir := filepath.Join(home, dbDirName)
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return "", fmt.Errorf("cannot create %s: %w", dir, err)
-	}
-	return dir, nil
-}
-
 // defaultConfigPath returns ~/.onley/config.json, creating the directory if
 // needed. It is resolved lazily by the commands that read settings, so that a
 // command with nothing to configure does not touch the home directory.
 func defaultConfigPath() (string, error) {
-	dir, err := onleyDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(dir, configFileName), nil
+	return appdir.ConfigPath()
 }
 
 // adoptLegacyDB copies a working-directory onley.db to the new default location
@@ -689,18 +668,7 @@ func cmdClean(dbPath string, assumeYes bool, stdin io.Reader, stdout, stderr io.
 		}
 	}
 
-	var deleted, failed int
-	for _, path := range toDelete {
-		if err := os.Remove(path); err != nil {
-			fmt.Fprintf(stderr, "  delete failed %s: %v\n", path, err)
-			failed++
-			continue
-		}
-		if err := store.DeleteRecord(path); err != nil {
-			fmt.Fprintf(stderr, "  index cleanup failed %s: %v\n", path, err)
-		}
-		deleted++
-	}
+	deleted, failed := deletePaths(store, toDelete, stderr)
 	fmt.Fprintf(stdout, "Done: %d deleted, %d failed.\n", deleted, failed)
 	return 0
 }
@@ -751,20 +719,31 @@ func cmdCleanAll(dbPath string, assumeYes bool, stdin io.Reader, stdout, stderr 
 		}
 	}
 
-	var deleted, failed int
-	for _, path := range toDelete {
-		if err := os.Remove(path); err != nil {
-			fmt.Fprintf(stderr, "  delete failed %s: %v\n", path, err)
+	deleted, failed := deletePaths(store, toDelete, stderr)
+	fmt.Fprintf(stdout, "Done: %d deleted, %d failed.\n", deleted, failed)
+	return 0
+}
+
+// deletePaths removes paths and their records, reporting failures in the CLI's
+// existing format. Verification is left to clients that show a stale index to
+// a person; the commands here act on the snapshot they just read.
+func deletePaths(store *db.DB, paths []string, stderr io.Writer) (deleted, failed int) {
+	targets := make([]cleaner.Target, len(paths))
+	for i, path := range paths {
+		targets[i] = cleaner.Target{Path: path}
+	}
+	for _, r := range cleaner.Delete(store, targets, false) {
+		if r.Err != nil {
+			fmt.Fprintf(stderr, "  delete failed %s: %v\n", r.Path, r.Err)
 			failed++
 			continue
 		}
-		if err := store.DeleteRecord(path); err != nil {
-			fmt.Fprintf(stderr, "  index cleanup failed %s: %v\n", path, err)
+		if r.IndexErr != nil {
+			fmt.Fprintf(stderr, "  index cleanup failed %s: %v\n", r.Path, r.IndexErr)
 		}
 		deleted++
 	}
-	fmt.Fprintf(stdout, "Done: %d deleted, %d failed.\n", deleted, failed)
-	return 0
+	return deleted, failed
 }
 
 func cmdStats(dbPath string, stdout, stderr io.Writer) int {

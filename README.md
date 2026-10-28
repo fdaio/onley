@@ -14,6 +14,7 @@ A local file deduplication tool. Indexes files by MD5, finds duplicates, and let
 - Concurrent scanning via a configurable goroutine worker pool
 - Continuous indexing (`watch`): the index follows files as they are created, changed and deleted
 - Interactive cleanup (`clean`) or automatic cleanup (`clean-all`)
+- NSGo desktop client for scanning and cleanup (preview)
 - Multi-machine mode: a replica compares its local index against a master and either deletes local copies or migrates unique files to the master over HTTP
 
 ## Install
@@ -42,6 +43,47 @@ To build from source:
 git clone https://github.com/Laotree/onley
 cd onley
 make build      # produces ./onley
+```
+
+## Desktop app (preview)
+
+The NSGo desktop client covers the daily cleanup loop: scan a folder, review
+duplicate groups, choose one copy to keep per group, and delete the rest after
+one confirmation. It uses the same `~/.onley/local.db` index as the CLI.
+
+Build and open it on macOS:
+
+```sh
+make app
+# Apple silicon
+open cmd/onley-app/dist/Onley-0.1.0-macos_arm64/Onley.app
+# Intel
+open cmd/onley-app/dist/Onley-0.1.0-macos_x64/Onley.app
+```
+
+Building the app needs Go 1.27.3 and Xcode; NSGo is pinned in `go.mod`.
+NSGo is early and has no stable API, so upgrade it as a separate task.
+`make app` builds for this Mac's architecture; `make app-all` packages macOS,
+Windows and Linux builds. The macOS app is the validated target in this
+preview. The Windows and Linux builds compile and package, but have not been
+run yet.
+
+The client is desktop-only. Mobile and web clients need an onley service API,
+which this preview does not add. The client has no `watch`, replica, `config`
+or custom `-db` support; use the CLI for those. It takes a typed path or a
+dropped folder; there is no native folder picker yet. A scan or delete uses the default index only, and deletion
+is permanent. The app verifies each file's size and modification time before
+deleting it; an index from an older onley needs one rescan to record mtimes.
+The app is unsigned, so Gatekeeper may require opening it from the Finder
+context menu the first time. Third-party notices are in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+Headless tests run with the rest of the repository. Native macOS UI tests need
+Xcode:
+
+```sh
+go test ./...
+cd cmd/onley-app && go tool nsgo test -target macos
 ```
 
 ## Quick start

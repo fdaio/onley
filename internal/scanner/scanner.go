@@ -1,6 +1,7 @@
 package scanner
 
 import (
+	"context"
 	"crypto/md5"
 	"fmt"
 	"io"
@@ -26,11 +27,24 @@ type Progress struct {
 	Err      error
 }
 
-// Scan walks root and indexes every regular file using a pool of worker goroutines.
-// Each worker does a Lookup + (optional) MD5 hash concurrently; a single writer
-// serializes all Upserts to avoid SQLite write contention.
-// Files whose size and mtime match the stored record are skipped (resume support).
+// Scan walks root and indexes every regular file using a pool of worker
+// goroutines. Each worker does a Lookup + (optional) MD5 hash concurrently; a
+// single writer serializes all Upserts to avoid SQLite write contention.
+// Files whose size and mtime match the stored record are skipped (resume
+// support).
 func Scan(root string, store *db.DB, workers int) <-chan Progress {
+	return ScanContext(context.Background(), root, store, workers)
+}
+
+// ScanContext is Scan with cancellation. It closes the returned channel when
+// the walk finishes, workers finish, or ctx is cancelled, whichever comes
+// first. A cancelled scan keeps the records it already wrote, so the next scan
+// resumes from them. Hashing a file already in progress finishes before its
+// worker stops.
+func ScanContext(ctx context.Context, root string, store *db.DB, workers int) <-chan Progress {
+	if workers < 1 {
+		workers = 1
+	}
 	ch := make(chan Progress, workers)
 
 	type job struct {
@@ -57,12 +71,25 @@ func Scan(root string, store *db.DB, workers int) <-chan Progress {
 
 		var active atomic.Int64
 
+		// send delivers one worker result unless the scan is cancelled.
+		send := func(r result) bool {
+			select {
+			case results <- r:
+				return true
+			case <-ctx.Done():
+				return false
+			}
+		}
+
 		// Walk goroutine: enumerate files and feed the job queue.
 		go func() {
 			defer close(jobs)
 			filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+				if ctx.Err() != nil {
+					return filepath.SkipAll
+				}
 				if err != nil {
-					results <- result{path: path, err: err}
+					send(result{path: path, err: err})
 					return nil // keep walking
 				}
 				if !d.Type().IsRegular() {
@@ -70,11 +97,15 @@ func Scan(root string, store *db.DB, workers int) <-chan Progress {
 				}
 				info, err := d.Info()
 				if err != nil {
-					results <- result{path: path, err: err}
+					send(result{path: path, err: err})
 					return nil
 				}
-				jobs <- job{path: path, size: info.Size(), mtime: info.ModTime().Unix()}
-				return nil
+				select {
+				case jobs <- job{path: path, size: info.Size(), mtime: info.ModTime().Unix()}:
+					return nil
+				case <-ctx.Done():
+					return filepath.SkipAll
+				}
 			})
 		}()
 
@@ -84,29 +115,48 @@ func Scan(root string, store *db.DB, workers int) <-chan Progress {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				for j := range jobs {
+				for {
+					var j job
+					select {
+					case <-ctx.Done():
+						return
+					case next, ok := <-jobs:
+						if !ok {
+							return
+						}
+						j = next
+					}
+
 					unchanged, err := storeUnchanged(store, j.path, j.size, j.mtime)
 					if err != nil {
-						results <- result{path: j.path, workerID: id, err: err}
+						if !send(result{path: j.path, workerID: id, err: err}) {
+							return
+						}
 						continue
 					}
 					if unchanged {
-						results <- result{path: j.path, workerID: id, skipped: true}
+						if !send(result{path: j.path, workerID: id, skipped: true}) {
+							return
+						}
 						continue
 					}
 
 					// Signal that this worker has started hashing.
-					results <- result{path: j.path, workerID: id, started: true}
+					if !send(result{path: j.path, workerID: id, started: true}) {
+						return
+					}
 
 					n := int(active.Add(1))
 					hash, err := hashFile(j.path)
 					active.Add(-1)
 
 					if err != nil {
-						results <- result{path: j.path, workerID: id, err: err}
+						if !send(result{path: j.path, workerID: id, err: err}) {
+							return
+						}
 						continue
 					}
-					results <- result{
+					if !send(result{
 						path:     j.path,
 						workerID: id,
 						active:   n,
@@ -117,6 +167,8 @@ func Scan(root string, store *db.DB, workers int) <-chan Progress {
 							MD5:   hash,
 							Mtime: j.mtime,
 						},
+					}) {
+						return
 					}
 				}
 			}()
@@ -130,27 +182,41 @@ func Scan(root string, store *db.DB, workers int) <-chan Progress {
 
 		// Single writer: serializes Upserts and emits Progress events.
 		var count int
-		for r := range results {
-			if r.err != nil {
-				ch <- Progress{Path: r.path, WorkerID: r.workerID, Done: true, Err: r.err}
-				continue
+		for {
+			var r result
+			select {
+			case <-ctx.Done():
+				return
+			case next, ok := <-results:
+				if !ok {
+					return
+				}
+				r = next
 			}
-			if r.started {
+
+			var p Progress
+			switch {
+			case r.err != nil:
+				p = Progress{Path: r.path, WorkerID: r.workerID, Done: true, Err: r.err}
+			case r.started:
 				// Worker just started hashing — let caller update the display.
-				ch <- Progress{Path: r.path, WorkerID: r.workerID, Done: false}
-				continue
-			}
-			if r.skipped {
+				p = Progress{Path: r.path, WorkerID: r.workerID, Done: false}
+			case r.skipped:
 				count++
-				ch <- Progress{Path: r.path, WorkerID: r.workerID, Current: count, Done: true, Skipped: true}
-				continue
+				p = Progress{Path: r.path, WorkerID: r.workerID, Current: count, Done: true, Skipped: true}
+			default:
+				if err := store.Upsert(*r.record); err != nil {
+					p = Progress{Path: r.path, WorkerID: r.workerID, Done: true, Err: err}
+					break
+				}
+				count++
+				p = Progress{Path: r.path, WorkerID: r.workerID, Current: count, Active: r.active, Done: true}
 			}
-			if err := store.Upsert(*r.record); err != nil {
-				ch <- Progress{Path: r.path, WorkerID: r.workerID, Done: true, Err: err}
-				continue
+			select {
+			case ch <- p:
+			case <-ctx.Done():
+				return
 			}
-			count++
-			ch <- Progress{Path: r.path, WorkerID: r.workerID, Current: count, Active: r.active, Done: true}
 		}
 	}()
 
