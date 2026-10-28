@@ -63,9 +63,9 @@ macOS 构建并打开：
 ```sh
 make app
 # Apple silicon
-open cmd/onley-app/dist/Onley-0.2.1-macos_arm64/Onley.app
+open cmd/onley-app/dist/Onley-0.2.2-macos_arm64/Onley.app
 # Intel
-open cmd/onley-app/dist/Onley-0.2.1-macos_x64/Onley.app
+open cmd/onley-app/dist/Onley-0.2.2-macos_x64/Onley.app
 ```
 
 构建应用需要 Go 1.27.3 和 Xcode；NSGo 版本固定在 `go.mod`。
