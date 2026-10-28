@@ -14,7 +14,7 @@ A local file deduplication tool. Indexes files by MD5, finds duplicates, and let
 - Concurrent scanning via a configurable goroutine worker pool
 - Continuous indexing (`watch`): the index follows files as they are created, changed and deleted
 - Interactive cleanup (`clean`) or automatic cleanup (`clean-all`)
-- NSGo desktop client for scanning and cleanup (preview)
+- NSGo desktop client for scanning and cleanup, with multi-folder scans (preview)
 - Multi-machine mode: a replica compares its local index against a master and either deletes local copies or migrates unique files to the master over HTTP
 
 ## Install
@@ -54,11 +54,13 @@ make build      # produces ./onley
 
 The NSGo desktop client covers the daily cleanup loop: scan a folder, review
 duplicate groups, choose one copy to keep per group, and delete the rest after
-one confirmation. Scanning shows a live MB/s gauge with a moving needle. A
-single "Keep one per group" action selects the first path in every group and
-opens the deletion review; it never deletes without confirmation. It uses the
-same `~/.onley/local.db` index as the CLI. Release packages are unsigned; see
-the note below before opening one.
+one confirmation. Scanning shows a live MB/s gauge with a moving needle. The
+scan list accepts multiple folders, and a folder inside another selected folder
+is merged into its parent before scanning. Merging uses absolute paths, so
+symlink aliases are not resolved. A single "Keep one per group" action
+selects the first path in every group and opens the deletion review; it never
+deletes without confirmation. It uses the same `~/.onley/local.db` index as the
+CLI. Release packages are unsigned; see the note below before opening one.
 
 Build and open it on macOS:
 

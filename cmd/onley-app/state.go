@@ -48,7 +48,8 @@ type state struct {
 	groups   *core.Signal[[]db.DuplicateGroup]
 	total    *core.Signal[int]
 	summary  *core.Signal[appmodel.Summary]
-	scanDir  *core.Signal[string]
+	scanDirs *core.Signal[[]string]
+	scanPath *core.Signal[string]
 	keep     *core.Signal[map[string]string]
 	scanning *core.Signal[bool]
 	busy     *core.Signal[bool]
@@ -96,7 +97,8 @@ func newState(cx *core.Scope, cfg Config) *state {
 		groups:     core.NewSignalFunc(cx, []db.DuplicateGroup{}, nil),
 		total:      core.NewSignal(cx, 0),
 		summary:    core.NewSignal(cx, appmodel.Summary{}),
-		scanDir:    core.NewSignal(cx, defaultDir),
+		scanDirs:   core.NewSignalFunc(cx, []string{defaultDir}, nil),
+		scanPath:   core.NewSignal(cx, ""),
 		keep:       core.NewSignalFunc(cx, map[string]string{}, nil),
 		scanning:   core.NewSignal(cx, false),
 		busy:       core.NewSignal(cx, false),
@@ -235,13 +237,14 @@ func (s *state) refresh() {
 	s.refreshAsync(func() { s.note.Set("Index refreshed.") })
 }
 
-func (s *state) startScan() {
-	if s.cfg.Store == nil || s.scanning.Get() || s.busy.Get() {
-		return
+// addFolder normalizes and adds a folder, merging it with the selected tree.
+func (s *state) addFolder(raw string) bool {
+	if s.scanning.Get() || s.busy.Get() {
+		return false
 	}
-	path := s.expand(s.scanDir.Get())
+	path := s.expand(raw)
 	if path == "" {
-		path = s.defaultDir
+		return false
 	}
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(s.home, path)
@@ -249,21 +252,80 @@ func (s *state) startScan() {
 	abs, err := filepath.Abs(path)
 	if err != nil {
 		s.message.Set("Cannot resolve the scan path: " + err.Error())
-		return
+		return false
 	}
 	info, err := os.Stat(abs)
 	if err != nil {
 		s.message.Set("Cannot scan that folder: " + err.Error())
-		return
+		return false
 	}
 	if !info.IsDir() {
-		s.message.Set("The scan path is not a folder.")
+		s.message.Set("The scan path is not a folder: " + abs)
+		return false
+	}
+	roots := append([]string(nil), s.scanDirs.Get()...)
+	roots = append(roots, abs)
+	s.scanDirs.Set(appmodel.MergeRoots(roots))
+	s.scanPath.Set("")
+	s.message.Set("")
+	return true
+}
+
+func (s *state) removeFolder(path string) {
+	if s.scanning.Get() || s.busy.Get() {
 		return
 	}
+	roots := s.scanDirs.Get()
+	next := make([]string, 0, len(roots))
+	for _, root := range roots {
+		if root != path {
+			next = append(next, root)
+		}
+	}
+	s.scanDirs.Set(next)
+}
+
+func (s *state) scanRootsLabel() string {
+	roots := s.scanDirs.Get()
+	switch len(roots) {
+	case 0:
+		return "no folders"
+	case 1:
+		return displayPath(roots[0], s.home)
+	default:
+		return fmt.Sprintf("%d folders", len(roots))
+	}
+}
+
+func (s *state) startScan() {
+	if s.cfg.Store == nil || s.scanning.Get() || s.busy.Get() {
+		return
+	}
+	if draft := strings.TrimSpace(s.scanPath.Get()); draft != "" {
+		if !s.addFolder(draft) {
+			return
+		}
+	}
+	roots := appmodel.MergeRoots(s.scanDirs.Get())
+	if len(roots) == 0 {
+		s.message.Set("Add a folder to scan.")
+		return
+	}
+	for _, root := range roots {
+		info, err := os.Stat(root)
+		if err != nil {
+			s.message.Set("Cannot scan that folder: " + err.Error())
+			return
+		}
+		if !info.IsDir() {
+			s.message.Set("The scan path is not a folder: " + root)
+			return
+		}
+	}
+	s.scanDirs.Set(roots)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
-	s.scanDir.Set(abs)
 	s.keep.Set(map[string]string{})
 	s.confirm.Set(false)
 	s.progress.Set(scanProgress{})
@@ -280,49 +342,61 @@ func (s *state) startScan() {
 	s.scanning.Set(true)
 	s.message.Set("")
 	s.note.Set("")
-	go s.runScan(ctx, abs)
+	go s.runScan(ctx, roots)
 }
 
-func (s *state) runScan(ctx context.Context, root string) {
+func (s *state) runScan(ctx context.Context, roots []string) {
 	var p scanProgress
 	var samples []appmodel.SpeedSample
 	var hashed int64
+	var done int
 	started := time.Now()
 	lastPost := time.Now()
 
-	for ev := range s.cfg.Scan(ctx, root, s.cfg.Store, s.cfg.Workers) {
-		now := time.Now()
-		if ev.Bytes > 0 {
-			hashed += ev.Bytes
-			samples = append(samples, appmodel.SpeedSample{At: now, Bytes: ev.Bytes})
-			cutoff := now.Add(-2 * time.Second)
-			for len(samples) > 0 && samples[0].At.Before(cutoff) {
-				samples = samples[1:]
-			}
-		}
-		if ev.Err != nil {
-			p.Errors++
-			p.LastError = ev.Err.Error()
-		} else if ev.Done {
-			p.Done = ev.Current
-			if ev.Skipped {
-				p.Skipped++
-			}
-		}
+	post := func(now time.Time) {
+		p.Done = done
 		p.Hashed = hashed
 		p.Speed = appmodel.Rate(samples, now, time.Second)
 		p.Elapsed = now.Sub(started)
+		if now.Sub(lastPost) < 100*time.Millisecond {
+			return
+		}
+		lastPost = now
+		snapshot := p
+		s.cx.Post(func() {
+			s.progress.Set(snapshot)
+			s.animateSpeed(snapshot.Speed)
+		})
+	}
 
-		if now.Sub(lastPost) >= 100*time.Millisecond {
-			lastPost = now
-			snapshot := p
-			s.cx.Post(func() {
-				s.progress.Set(snapshot)
-				s.animateSpeed(snapshot.Speed)
-			})
+	for _, root := range roots {
+		for ev := range s.cfg.Scan(ctx, root, s.cfg.Store, s.cfg.Workers) {
+			now := time.Now()
+			if ev.Bytes > 0 {
+				hashed += ev.Bytes
+				samples = append(samples, appmodel.SpeedSample{At: now, Bytes: ev.Bytes})
+				cutoff := now.Add(-2 * time.Second)
+				for len(samples) > 0 && samples[0].At.Before(cutoff) {
+					samples = samples[1:]
+				}
+			}
+			if ev.Err != nil {
+				p.Errors++
+				p.LastError = ev.Err.Error()
+			} else if ev.Done {
+				done++
+				if ev.Skipped {
+					p.Skipped++
+				}
+			}
+			post(now)
+		}
+		if ctx.Err() != nil {
+			break
 		}
 	}
 
+	p.Done = done
 	p.Hashed = hashed
 	p.Speed = appmodel.Rate(samples, time.Now(), time.Second)
 	p.Elapsed = time.Since(started)
@@ -462,20 +536,27 @@ func (s *state) confirmDelete() {
 
 func (s *state) dropFiles(uris []string) {
 	s.dragging.Set(false)
+	if s.scanning.Get() || s.busy.Get() {
+		return
+	}
+	added := false
 	for _, uri := range uris {
 		path, ok := filePath(uri)
 		if !ok {
 			continue
 		}
-		info, err := os.Stat(path)
-		if err != nil || !info.IsDir() {
+		if info, err := os.Stat(path); err != nil || !info.IsDir() {
 			continue
 		}
-		s.scanDir.Set(path)
-		s.startScan()
+		if s.addFolder(path) {
+			added = true
+		}
+	}
+	if !added {
+		s.message.Set("Drop a folder to scan it.")
 		return
 	}
-	s.message.Set("Drop a folder to scan it.")
+	s.startScan()
 }
 
 func (s *state) expand(path string) string {
