@@ -34,6 +34,9 @@ func TestBuildPlanKeepsOnePerGroup(t *testing.T) {
 	if plan.Groups != 2 {
 		t.Errorf("groups = %d, want 2", plan.Groups)
 	}
+	if len(plan.Keeps) != 2 {
+		t.Errorf("keeps = %+v", plan.Keeps)
+	}
 	if len(plan.Targets) != 3 {
 		t.Fatalf("targets = %+v", plan.Targets)
 	}
@@ -53,7 +56,7 @@ func TestBuildPlanSkipsGroupsWithoutChoice(t *testing.T) {
 		group("b", 50, "/b/1", "/b/2"),
 	}
 	plan := BuildPlan(groups, map[string]string{"a": "/a/1"})
-	if plan.Groups != 1 || len(plan.Targets) != 1 || plan.Targets[0].Path != "/a/2" {
+	if plan.Groups != 1 || len(plan.Keeps) != 1 || len(plan.Targets) != 1 || plan.Targets[0].Path != "/a/2" {
 		t.Fatalf("plan = %+v", plan)
 	}
 }

@@ -1,6 +1,7 @@
 package cleaner
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -36,6 +37,22 @@ func writeIndexed(t *testing.T, store *db.DB, path, content string) Target {
 		t.Fatal(err)
 	}
 	return Target{Path: path, Size: record.Size, Mtime: record.Mtime}
+}
+
+func TestVerify(t *testing.T) {
+	store := openDB(t)
+	dir := t.TempDir()
+	path := filepath.Join(dir, "file.txt")
+	target := writeIndexed(t, store, path, "content")
+	if err := Verify(target); err != nil {
+		t.Fatalf("Verify: %v", err)
+	}
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	if err := Verify(target); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("Verify missing = %v, want os.ErrNotExist", err)
+	}
 }
 
 func TestDeleteKeepsUntargetedFiles(t *testing.T) {

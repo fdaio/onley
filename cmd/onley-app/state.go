@@ -328,8 +328,23 @@ func (s *state) confirmDelete() {
 	for i, file := range plan.Targets {
 		targets[i] = cleaner.Target{Path: file.Path, Size: file.Size, Mtime: file.Mtime}
 	}
+	keeps := make([]cleaner.Target, len(plan.Keeps))
+	for i, file := range plan.Keeps {
+		keeps[i] = cleaner.Target{Path: file.Path, Size: file.Size, Mtime: file.Mtime}
+	}
 
 	go func() {
+		for _, keep := range keeps {
+			if err := cleaner.Verify(keep); err != nil {
+				s.cx.Post(func() {
+					s.busy.Set(false)
+					s.note.Set("Delete canceled: the copy to keep is no longer available.")
+					s.message.Set("Cannot keep " + keep.Path + ": " + err.Error() + ". Review the files again.")
+					s.refreshAsync(nil)
+				})
+				return
+			}
+		}
 		results := cleaner.Delete(s.cfg.Store, targets, true)
 		var deleted, failed, missing int
 		var freed int64

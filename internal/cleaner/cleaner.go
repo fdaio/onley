@@ -32,6 +32,26 @@ type Result struct {
 	IndexErr error
 }
 
+// Verify reports whether target still matches the index. It returns an error
+// wrapping os.ErrNotExist when the file is gone, and refuses an old record
+// without a modification time.
+func Verify(target Target) error {
+	info, err := os.Lstat(target.Path)
+	if err != nil {
+		return fmt.Errorf("stat: %w", err)
+	}
+	if !info.Mode().IsRegular() {
+		return errors.New("not a regular file")
+	}
+	if target.Mtime == 0 {
+		return errors.New("index has no modification time; rescan first")
+	}
+	if info.Size() != target.Size || info.ModTime().Unix() != target.Mtime {
+		return errors.New("changed since scan")
+	}
+	return nil
+}
+
 // Delete removes each target and then its record. Verification, when set,
 // refuses a file whose size or modification time no longer matches the index,
 // and drops the record of a file that is already gone. A failure on one target
@@ -42,27 +62,13 @@ func Delete(store *db.DB, targets []Target, verify bool) []Result {
 		r := Result{Path: target.Path}
 
 		if verify {
-			info, err := os.Lstat(target.Path)
-			switch {
-			case errors.Is(err, os.ErrNotExist):
-				r.Missing = true
-				r.IndexErr = store.DeleteRecord(target.Path)
-				results = append(results, r)
-				continue
-			case err != nil:
-				r.Err = fmt.Errorf("stat: %w", err)
-				results = append(results, r)
-				continue
-			case !info.Mode().IsRegular():
-				r.Err = errors.New("not a regular file")
-				results = append(results, r)
-				continue
-			case target.Mtime == 0:
-				r.Err = errors.New("index has no modification time; rescan first")
-				results = append(results, r)
-				continue
-			case info.Size() != target.Size || info.ModTime().Unix() != target.Mtime:
-				r.Err = errors.New("changed since scan")
+			if err := Verify(target); err != nil {
+				if errors.Is(err, os.ErrNotExist) {
+					r.Missing = true
+					r.IndexErr = store.DeleteRecord(target.Path)
+				} else {
+					r.Err = err
+				}
 				results = append(results, r)
 				continue
 			}

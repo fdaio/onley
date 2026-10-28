@@ -24,9 +24,10 @@ func Summarize(groups []db.DuplicateGroup) Summary {
 	return s
 }
 
-// Plan is the files a delete would remove.
+// Plan is the files a delete would remove and the copies it would keep.
 type Plan struct {
 	Targets []db.FileRecord
+	Keeps   []db.FileRecord
 	Bytes   int64
 	Groups  int
 }
@@ -53,7 +54,11 @@ func BuildPlan(groups []db.DuplicateGroup, keep map[string]string) Plan {
 		}
 		plan.Groups++
 		for _, file := range group.Files {
-			if file.Path == keepPath || seen[file.Path] {
+			if file.Path == keepPath {
+				plan.Keeps = append(plan.Keeps, file)
+				continue
+			}
+			if seen[file.Path] {
 				continue
 			}
 			seen[file.Path] = true

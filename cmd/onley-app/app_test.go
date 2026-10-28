@@ -133,6 +133,29 @@ func TestScanSelectCancelThenDelete(t *testing.T) {
 	}
 }
 
+func TestDeleteAbortsWhenKeptFileIsGone(t *testing.T) {
+	dir := t.TempDir()
+	content := strings.Repeat("a", 4096)
+	keep := writeFile(t, dir, "a.bin", content)
+	other := writeFile(t, dir, "b.bin", content)
+	store := newStore(t)
+	scanInto(t, store, dir)
+
+	app := startApp(t, store, dir, nil)
+	app.Press("id:keep:" + keep)
+	app.WaitFor("text:1 file selected", 2*time.Second)
+	if err := os.Remove(keep); err != nil {
+		t.Fatal(err)
+	}
+	app.Press("id:review-delete")
+	app.Press("id:delete-confirm")
+	app.WaitFor("text:Cannot keep", 5*time.Second)
+	if _, err := os.Stat(other); err != nil {
+		t.Errorf("other copy was deleted after the kept copy vanished: %v", err)
+	}
+	app.WaitUntil(5*time.Second, func() bool { return app.Find("id:stat-groups").Text == "1 group" })
+}
+
 func TestDeleteRefusesChangedFile(t *testing.T) {
 	dir := t.TempDir()
 	content := strings.Repeat("a", 4096)
