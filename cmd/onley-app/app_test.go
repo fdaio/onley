@@ -72,6 +72,70 @@ func TestEmptyState(t *testing.T) {
 	}
 }
 
+func TestAddFolderMergesParentChild(t *testing.T) {
+	parent := t.TempDir()
+	child := filepath.Join(parent, "child")
+	if err := os.Mkdir(child, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	sibling := t.TempDir()
+
+	app := startApp(t, newStore(t), parent, nil)
+	if got := app.Find("id:scan-root-count").Text; got != "1 folder" {
+		t.Fatalf("initial folders = %q, want 1 folder", got)
+	}
+
+	app.Type("id:scan-path", child)
+	app.Press("id:add-folder")
+	app.WaitUntil(2*time.Second, func() bool { return app.Find("id:scan-root-count").Text == "1 folder" })
+
+	app.Type("id:scan-path", sibling)
+	app.Press("id:add-folder")
+	app.WaitUntil(2*time.Second, func() bool { return app.Find("id:scan-root-count").Text == "2 folders" })
+
+	app.Press("id:remove-folder:" + sibling)
+	app.WaitUntil(2*time.Second, func() bool { return app.Find("id:scan-root-count").Text == "1 folder" })
+}
+
+func TestScanMultipleRoots(t *testing.T) {
+	first := t.TempDir()
+	second := t.TempDir()
+	writeFile(t, first, "a1.bin", strings.Repeat("a", 4096))
+	writeFile(t, first, "a2.bin", strings.Repeat("a", 4096))
+	writeFile(t, second, "b1.bin", strings.Repeat("b", 4096))
+	writeFile(t, second, "b2.bin", strings.Repeat("b", 4096))
+
+	app := startApp(t, newStore(t), first, nil)
+	app.Type("id:scan-path", second)
+	app.Press("id:add-folder")
+	app.WaitUntil(2*time.Second, func() bool { return app.Find("id:scan-root-count").Text == "2 folders" })
+	app.Press("id:scan-button")
+	app.WaitFor("text:2 groups · 4 duplicate files", 10*time.Second)
+	if got := app.Find("id:stat-total").Text; got != "4 files" {
+		t.Errorf("total = %q, want 4 files", got)
+	}
+	if got := app.Find("id:stat-groups").Text; got != "2 groups" {
+		t.Errorf("groups = %q, want 2 groups", got)
+	}
+}
+
+func TestDropMultipleFolders(t *testing.T) {
+	first := t.TempDir()
+	second := t.TempDir()
+	writeFile(t, first, "a1.bin", strings.Repeat("a", 4096))
+	writeFile(t, first, "a2.bin", strings.Repeat("a", 4096))
+	writeFile(t, second, "b1.bin", strings.Repeat("b", 4096))
+	writeFile(t, second, "b2.bin", strings.Repeat("b", 4096))
+
+	app := startApp(t, newStore(t), t.TempDir(), nil)
+	uris := []string{
+		(&url.URL{Scheme: "file", Path: first}).String(),
+		(&url.URL{Scheme: "file", Path: second}).String(),
+	}
+	app.DropFiles("id:drop-zone", uris...)
+	app.WaitFor("text:2 groups · 4 duplicate files", 10*time.Second)
+}
+
 func TestScanRejectsMissingFolder(t *testing.T) {
 	store := newStore(t)
 	app := startApp(t, store, t.TempDir(), nil)

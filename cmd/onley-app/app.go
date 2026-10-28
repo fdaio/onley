@@ -180,14 +180,14 @@ func (s *state) scanCard(cx *core.Scope) core.Node {
 		}
 	}
 	return core.View{Style: cardStyle(c), Children: []core.Node{
-		line("Scan a folder", 15, core.FontWeightSemibold, c.text),
+		line("Scan folders", 15, core.FontWeightSemibold, c.text),
 		line("The index is shared with the onley CLI.", 11, core.FontWeightNormal, c.muted),
 		core.View{Style: core.Style{Direction: core.Row, Gap: 8}, Children: []core.Node{
 			core.View{Style: core.Style{FlexGrow: 1, MinWidth: core.Pt(0)}, Children: []core.Node{base.Input{
-				Value:       s.scanDir.Get,
-				OnChange:    s.scanDir.Set,
-				OnSubmit:    func(string) { s.startScan() },
-				Placeholder: "~/Downloads",
+				Value:       s.scanPath.Get,
+				OnChange:    s.scanPath.Set,
+				OnSubmit:    func(string) { s.addFolder(s.scanPath.Get()) },
+				Placeholder: "Add a folder",
 				Disabled:    func() bool { return s.scanning.Get() || s.busy.Get() },
 				TestID:      "scan-path",
 				Style: core.Style{
@@ -196,7 +196,41 @@ func (s *state) scanCard(cx *core.Scope) core.Node {
 					PlaceholderColor: c.muted,
 				},
 			}}},
-			appButton(cx, "Scan", "scan-button", buttonPrimary, func() bool { return s.scanning.Get() || s.busy.Get() }, s.startScan),
+			appButton(cx, "Add", "add-folder", buttonSecondary, func() bool {
+				return s.scanning.Get() || s.busy.Get() || strings.TrimSpace(s.scanPath.Get()) == ""
+			}, func() { s.addFolder(s.scanPath.Get()) }),
+		}},
+		core.Each(
+			func() []string { return s.scanDirs.Get() },
+			func(root string) string { return root },
+			func(cx *core.Scope, root func() string, _ func() int) core.Node {
+				return core.View{Style: core.Style{
+					Direction: core.Row, AlignItems: core.AlignCenter, Gap: 6,
+					Background: c.background, BorderWidth: 1, BorderColor: c.border,
+					CornerRadius: 8, Padding: core.Symmetric(4, 8),
+				}, Children: []core.Node{
+					core.View{Style: core.Style{FlexGrow: 1, FlexShrink: 1, MinWidth: core.Pt(0)}, Children: []core.Node{
+						core.Text{ContentFunc: func() string { return displayPath(root(), s.home) }, MaxLines: 1,
+							Style: core.Style{FontSize: 11, Color: c.text, MinWidth: core.Pt(0)}},
+					}},
+					appButton(cx, "Remove", "remove-folder:"+root(), buttonSecondary,
+						func() bool { return s.scanning.Get() || s.busy.Get() },
+						func() { s.removeFolder(root()) }),
+				}}
+			},
+		),
+		line("Child folders merge into their parent.", 10, core.FontWeightNormal, c.muted),
+		core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 8}, Children: []core.Node{
+			core.Text{ContentFunc: func() string {
+				n := len(s.scanDirs.Get())
+				if n == 1 {
+					return "1 folder"
+				}
+				return fmt.Sprintf("%d folders", n)
+			}, TestID: "scan-root-count", Style: core.Style{FlexGrow: 1, FontSize: 11, Color: c.muted}},
+			appButton(cx, "Scan all", "scan-button", buttonPrimary, func() bool {
+				return s.scanning.Get() || s.busy.Get() || len(s.scanDirs.Get()) == 0
+			}, s.startScan),
 		}},
 		core.View{
 			OnFileDrop:      s.dropFiles,
@@ -205,8 +239,8 @@ func (s *state) scanCard(cx *core.Scope) core.Node {
 			StyleFunc:       zoneStyle,
 			TestID:          "drop-zone",
 			Children: []core.Node{
-				line("Drop a folder here", 12, core.FontWeightMedium, c.text),
-				line("or type a path above", 11, core.FontWeightNormal, c.muted),
+				line("Drop folders here", 12, core.FontWeightMedium, c.text),
+				line("they are added and merged before scanning", 11, core.FontWeightNormal, c.muted),
 			},
 		},
 	}}
@@ -223,7 +257,7 @@ func (s *state) scanningPanel(cx *core.Scope) core.Node {
 	style.Gap = 12
 	return core.View{Style: style, Children: []core.Node{
 		line("Scanning", 22, core.FontWeightSemibold, c.text),
-		core.Text{Content: displayPath(s.scanDir.Get(), s.home), MaxLines: 1,
+		core.Text{Content: s.scanRootsLabel(), MaxLines: 1,
 			Style: core.Style{FontSize: 12, Color: c.muted}},
 		core.Canvas{
 			Style:  core.Style{Width: core.Pct(100), Height: core.Pt(330)},
@@ -369,8 +403,9 @@ func (s *state) emptyState(cx *core.Scope) core.Node {
 			}, Style: core.Style{FontSize: 12, Color: c.muted}},
 			core.Show{When: func() bool { return available && !s.scanning.Get() }, Then: func(cx *core.Scope) core.Node {
 				return appButton(cx, "Scan default folder", "empty-scan", buttonSecondary, nil, func() {
-					s.scanDir.Set(s.defaultDir)
-					s.startScan()
+					if s.addFolder(s.defaultDir) {
+						s.startScan()
+					}
 				})
 			}},
 		},
