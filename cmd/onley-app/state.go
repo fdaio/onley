@@ -218,6 +218,16 @@ func (s *state) clearKeep() {
 	s.keep.Set(map[string]string{})
 }
 
+// autoKeep selects one file in every group and opens the deletion review. The
+// selection is still a plan: nothing is deleted until the dialog is confirmed.
+func (s *state) autoKeep() {
+	if s.scanning.Get() || s.busy.Get() {
+		return
+	}
+	s.keepFirst()
+	s.openConfirm()
+}
+
 func (s *state) refresh() {
 	if s.scanning.Get() || s.busy.Get() {
 		return

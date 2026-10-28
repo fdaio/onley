@@ -211,7 +211,7 @@ func TestDeleteCleansRecordOfMissingFile(t *testing.T) {
 	}
 }
 
-func TestKeepFirstAcrossGroups(t *testing.T) {
+func TestAutoKeepAcrossGroups(t *testing.T) {
 	dir := t.TempDir()
 	firstA := writeFile(t, dir, "a1.bin", strings.Repeat("a", 4096))
 	secondA := writeFile(t, dir, "a2.bin", strings.Repeat("a", 4096))
@@ -221,12 +221,14 @@ func TestKeepFirstAcrossGroups(t *testing.T) {
 	scanInto(t, store, dir)
 
 	app := startApp(t, store, dir, nil)
-	app.Press("id:keep-first")
-	app.WaitFor("text:2 files selected", 2*time.Second)
-	app.Press("id:review-delete")
+	app.Press("id:auto-keep")
 	if !app.Exists("text:Delete 2 files and free 8.0 KB?") {
 		t.Fatalf("confirmation missing\n%s", app.Dump())
 	}
+	app.Press("id:cancel-delete")
+	app.WaitForGone("id:confirm-dialog", 2*time.Second)
+	app.WaitFor("text:2 files selected", 2*time.Second)
+	app.Press("id:review-delete")
 	app.Press("id:delete-confirm")
 	app.WaitFor("text:Deleted 2 files, freed 8.0 KB.", 10*time.Second)
 	if _, err := os.Stat(firstA); err != nil {
