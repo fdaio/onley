@@ -26,7 +26,7 @@ type colors struct {
 
 func colorsOf(cx *core.Scope) colors {
 	p := cx.Theme().Light
-	if cx.Env().Dark() {
+	if cx.Dark() {
 		p = cx.Theme().Dark
 	}
 	return colors{

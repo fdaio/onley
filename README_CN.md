@@ -63,7 +63,8 @@ NSGo 仍处于 early 阶段、没有稳定 API，升级应作为独立任务。
 `make app` 构建当前 Mac 架构；`make app-all` 打包 macOS、Windows 和 Linux。
 本轮只验证 macOS 运行；Windows 与 Linux 已验证可构建、可打包，但尚未运行验证。
 
-客户端只做桌面端。手机与 Web 客户端需要 onley 提供本地服务 API，本预览不做。
+客户端使用 Midnight Terminal 暗色配色，只做桌面端。手机与 Web 客户端需要
+onley 提供本地服务 API，本预览不做。
 客户端不支持 `watch`、replica、`config` 和自定义 `-db`，这些继续用 CLI。
 扫描路径可以输入或拖入文件夹，暂未提供原生目录选择器。扫描与删除只操作默认
 索引，删除不可撤销。删除前会校验文件大小和修改时间；旧版本建立的索引需要

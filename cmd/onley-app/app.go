@@ -16,6 +16,12 @@ import (
 // Root builds the app. Config is read once; tests pass a temporary store.
 func Root(cfg Config) func(*core.Scope) core.Node {
 	return func(cx *core.Scope) core.Node {
+		cx.SetTheme(midnightTheme())
+		cx.SetSubtreeAppearance(core.AppearanceDark)
+		// The platform's title bar follows the app appearance, which needs
+		// the mounted tree. The subtree appearance above only governs the
+		// app's own views.
+		cx.Effect(func() { cx.SetAppearance(core.AppearanceDark) })
 		s := newState(cx, cfg)
 		if desktop.IsAvailable(cx) {
 			desktop.SetTitle(cx, "Onley")
@@ -46,7 +52,7 @@ func Root(cfg Config) func(*core.Scope) core.Node {
 			})
 		}
 		return core.Dynamic(func(cx *core.Scope) core.Node {
-			_ = cx.Env().Dark()
+			_ = cx.Dark()
 			return s.view(cx)
 		})
 	}
