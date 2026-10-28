@@ -240,9 +240,7 @@ func TestKeepFirstAcrossGroups(t *testing.T) {
 			t.Errorf("second copy %s still exists: %v", path, err)
 		}
 	}
-	if got := app.Find("id:stat-groups").Text; got != "0 groups" {
-		t.Errorf("groups = %q, want 0 groups", got)
-	}
+	app.WaitUntil(5*time.Second, func() bool { return app.Find("id:stat-groups").Text == "0 groups" })
 }
 
 func TestCancelScan(t *testing.T) {
