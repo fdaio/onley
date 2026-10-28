@@ -33,6 +33,9 @@ type scanProgress struct {
 	Done      int
 	Skipped   int
 	Errors    int
+	Hashed    int64
+	Speed     float64
+	Elapsed   time.Duration
 	LastError string
 }
 
@@ -54,6 +57,10 @@ type state struct {
 	note     *core.Signal[string]
 	confirm  *core.Signal[bool]
 	dragging *core.Signal[bool]
+	speedMax *core.Signal[float64]
+	needle   *core.AnimatedValue
+	pulse    *core.AnimatedValue
+	pulseRun *core.AnimationRun
 	cancel   context.CancelFunc
 }
 
@@ -98,6 +105,9 @@ func newState(cx *core.Scope, cfg Config) *state {
 		note:       core.NewSignal(cx, ""),
 		confirm:    core.NewSignal(cx, false),
 		dragging:   core.NewSignal(cx, false),
+		speedMax:   core.NewSignal(cx, 40.0),
+		needle:     core.NewAnimatedValue(cx, 0),
+		pulse:      core.NewAnimatedValue(cx, 0),
 	}
 
 	switch {
@@ -246,8 +256,18 @@ func (s *state) startScan() {
 	s.scanDir.Set(abs)
 	s.keep.Set(map[string]string{})
 	s.confirm.Set(false)
-	s.scanning.Set(true)
 	s.progress.Set(scanProgress{})
+	s.speedMax.Set(40)
+	s.needle.Set(0)
+	s.pulse.Set(0)
+	if s.pulseRun != nil {
+		s.pulseRun.Stop()
+	}
+	s.pulseRun = s.cx.StartAnimation(core.Loop(core.Sequence(
+		core.Timing(s.pulse, 1, core.TimingConfig{Duration: 900 * time.Millisecond}),
+		core.Timing(s.pulse, 0, core.TimingConfig{Duration: 900 * time.Millisecond}),
+	), 0), nil)
+	s.scanning.Set(true)
 	s.message.Set("")
 	s.note.Set("")
 	go s.runScan(ctx, abs)
@@ -255,28 +275,56 @@ func (s *state) startScan() {
 
 func (s *state) runScan(ctx context.Context, root string) {
 	var p scanProgress
+	var samples []appmodel.SpeedSample
+	var hashed int64
+	started := time.Now()
 	lastPost := time.Now()
+
 	for ev := range s.cfg.Scan(ctx, root, s.cfg.Store, s.cfg.Workers) {
+		now := time.Now()
+		if ev.Bytes > 0 {
+			hashed += ev.Bytes
+			samples = append(samples, appmodel.SpeedSample{At: now, Bytes: ev.Bytes})
+			cutoff := now.Add(-2 * time.Second)
+			for len(samples) > 0 && samples[0].At.Before(cutoff) {
+				samples = samples[1:]
+			}
+		}
 		if ev.Err != nil {
 			p.Errors++
 			p.LastError = ev.Err.Error()
-			continue
-		}
-		if ev.Done {
+		} else if ev.Done {
 			p.Done = ev.Current
 			if ev.Skipped {
 				p.Skipped++
 			}
 		}
-		if ev.Done && time.Since(lastPost) >= 100*time.Millisecond {
-			lastPost = time.Now()
+		p.Hashed = hashed
+		p.Speed = appmodel.Rate(samples, now, time.Second)
+		p.Elapsed = now.Sub(started)
+
+		if now.Sub(lastPost) >= 100*time.Millisecond {
+			lastPost = now
 			snapshot := p
-			s.cx.Post(func() { s.progress.Set(snapshot) })
+			s.cx.Post(func() {
+				s.progress.Set(snapshot)
+				s.animateSpeed(snapshot.Speed)
+			})
 		}
 	}
 
+	p.Hashed = hashed
+	p.Speed = appmodel.Rate(samples, time.Now(), time.Second)
+	p.Elapsed = time.Since(started)
+
 	cancelled := ctx.Err() != nil
 	s.cx.Post(func() {
+		if s.pulseRun != nil {
+			s.pulseRun.Stop()
+			s.pulseRun = nil
+		}
+		s.pulse.Set(0)
+		s.needle.Set(0)
 		s.scanning.Set(false)
 		s.cancel = nil
 		s.progress.Set(p)
@@ -294,6 +342,22 @@ func (s *state) runScan(ctx context.Context, root string) {
 		}
 		s.refreshAsync(nil)
 	})
+}
+
+// animateSpeed moves the gauge needle toward bytesPerSecond. The ceiling grows
+// before the needle to keep it inside the dial.
+func (s *state) animateSpeed(bytesPerSecond float64) {
+	mb := bytesPerSecond / (1024 * 1024)
+	ceiling := appmodel.GaugeMax(s.speedMax.Get(), mb)
+	if ceiling != s.speedMax.Get() {
+		s.speedMax.Set(ceiling)
+	}
+	percent := 0.0
+	if ceiling > 0 {
+		percent = mb / ceiling * 100
+	}
+	percent = max(0, min(100, percent))
+	s.cx.StartAnimation(core.Spring(s.needle, percent, core.SpringConfig{Stiffness: 80, Damping: 14}), nil)
 }
 
 func (s *state) cancelScan() {

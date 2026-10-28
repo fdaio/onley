@@ -243,6 +243,43 @@ func TestKeepFirstAcrossGroups(t *testing.T) {
 	app.WaitUntil(5*time.Second, func() bool { return app.Find("id:stat-groups").Text == "0 groups" })
 }
 
+func TestScanShowsSpeedGauge(t *testing.T) {
+	dir := t.TempDir()
+	scan := func(ctx context.Context, _ string, _ *db.DB, _ int) <-chan scanner.Progress {
+		ch := make(chan scanner.Progress)
+		go func() {
+			defer close(ch)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(60 * time.Millisecond):
+					select {
+					case ch <- scanner.Progress{Bytes: 1 << 20}:
+					case <-ctx.Done():
+						return
+					}
+				}
+			}
+		}()
+		return ch
+	}
+	app := startApp(t, newStore(t), dir, scan)
+	app.Press("id:scan-button")
+	app.WaitFor("id:speed-gauge", 2*time.Second)
+	app.WaitFor("id:scan-speed", 2*time.Second)
+	app.WaitUntil(3*time.Second, func() bool { return app.Find("id:scan-speed").Text != "0 B/s" })
+	if speed := app.Find("id:scan-speed").Text; !strings.Contains(speed, "MB/s") {
+		t.Errorf("speed = %q, want MB/s", speed)
+	}
+	app.Screenshot("scanning")
+	app.Press("id:cancel-scan")
+	app.WaitFor("text:Scan canceled. The partial index is kept.", 5*time.Second)
+	if app.Exists("id:speed-gauge") {
+		t.Errorf("speed gauge still visible after cancel")
+	}
+}
+
 func TestCancelScan(t *testing.T) {
 	dir := t.TempDir()
 	store := newStore(t)
