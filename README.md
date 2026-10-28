@@ -31,6 +31,10 @@ tar xzf onley_<version>_linux_amd64.tar.gz
 # macOS desktop preview (Apple silicon)
 unzip onley-desktop_v<version>_macos_arm64.zip
 open Onley.app
+
+# macOS desktop app via Homebrew
+brew tap laotree/tap
+brew install --cask onley
 ```
 
 Archives are published for darwin and linux on amd64 and arm64, plus windows on
@@ -51,6 +55,13 @@ make build      # produces ./onley
 ```
 
 ## Desktop app (preview)
+
+On macOS, install the app with Homebrew:
+
+```sh
+brew tap laotree/tap
+brew install --cask onley
+```
 
 The NSGo desktop client covers the daily cleanup loop: scan a folder, review
 duplicate groups, choose one copy to keep per group, and delete the rest after

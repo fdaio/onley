@@ -31,6 +31,10 @@ tar xzf onley_<版本号>_linux_amd64.tar.gz
 # macOS 桌面客户端预览（Apple silicon）
 unzip onley-desktop_v<版本号>_macos_arm64.zip
 open Onley.app
+
+# macOS 桌面客户端 Homebrew 安装
+brew tap laotree/tap
+brew install --cask onley
 ```
 
 发布范围为 darwin 与 linux 的 amd64 / arm64，以及 windows 的 amd64，
@@ -49,6 +53,13 @@ make build      # 生成 ./onley
 ```
 
 ## 桌面客户端（预览）
+
+macOS 可通过 Homebrew 安装：
+
+```sh
+brew tap laotree/tap
+brew install --cask onley
+```
 
 NSGo 桌面客户端覆盖日常清理闭环：扫描文件夹、查看重复组、每组选择一个保留副本、
 确认后删除其余副本。扫描时显示实时 MB/s 速度仪表与动态指针。扫描列表支持多个
