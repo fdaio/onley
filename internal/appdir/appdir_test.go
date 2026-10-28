@@ -3,12 +3,14 @@ package appdir
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
 func TestDirCreatesPrivateDirectory(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 
 	dir, err := Dir()
 	if err != nil {
@@ -21,14 +23,17 @@ func TestDirCreatesPrivateDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat: %v", err)
 	}
-	if got := info.Mode().Perm(); got != 0o700 {
-		t.Errorf("mode = %o, want 700", got)
+	if runtime.GOOS != "windows" {
+		if got := info.Mode().Perm(); got != 0o700 {
+			t.Errorf("mode = %o, want 700", got)
+		}
 	}
 }
 
 func TestDBAndConfigPaths(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 
 	db, err := DBPath()
 	if err != nil {
@@ -50,6 +55,7 @@ func TestDBAndConfigPaths(t *testing.T) {
 func TestDirIsIdempotent(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 
 	first, err := Dir()
 	if err != nil {

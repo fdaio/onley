@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"path/filepath"
+	"testing"
+)
 
 func TestFilePath(t *testing.T) {
 	tests := []struct {
@@ -8,8 +11,8 @@ func TestFilePath(t *testing.T) {
 		want string
 		ok   bool
 	}{
-		{"file:///tmp/a%20b", "/tmp/a b", true},
-		{"file:///tmp/plain", "/tmp/plain", true},
+		{"file:///tmp/a%20b", filepath.FromSlash("/tmp/a b"), true},
+		{"file:///tmp/plain", filepath.FromSlash("/tmp/plain"), true},
 		{"https://example.com/a", "", false},
 		{"not a url", "", false},
 	}
@@ -22,10 +25,13 @@ func TestFilePath(t *testing.T) {
 }
 
 func TestDisplayPath(t *testing.T) {
-	if got := displayPath("/Users/alice/Downloads", "/Users/alice"); got != "~/Downloads" {
-		t.Errorf("displayPath = %q, want ~/Downloads", got)
+	home := filepath.Join(string(filepath.Separator), "Users", "alice")
+	downloads := filepath.Join(home, "Downloads")
+	if got, want := displayPath(downloads, home), "~"+string(filepath.Separator)+"Downloads"; got != want {
+		t.Errorf("displayPath = %q, want %q", got, want)
 	}
-	if got := displayPath("/Volumes/data", "/Users/alice"); got != "/Volumes/data" {
+	other := filepath.Join(string(filepath.Separator), "Volumes", "data")
+	if got := displayPath(other, home); got != other {
 		t.Errorf("displayPath = %q, want unchanged", got)
 	}
 }
