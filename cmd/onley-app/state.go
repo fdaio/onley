@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"maps"
 	"os"
 	"path/filepath"
@@ -15,6 +14,7 @@ import (
 	"onley/internal/cleaner"
 	"onley/internal/db"
 	"onley/internal/format"
+	"onley/internal/i18n"
 	"onley/internal/scanner"
 )
 
@@ -45,24 +45,26 @@ type state struct {
 	home       string
 	defaultDir string
 
-	groups   *core.Signal[[]db.DuplicateGroup]
-	total    *core.Signal[int]
-	summary  *core.Signal[appmodel.Summary]
-	scanDirs *core.Signal[[]string]
-	scanPath *core.Signal[string]
-	keep     *core.Signal[map[string]string]
-	scanning *core.Signal[bool]
-	busy     *core.Signal[bool]
-	progress *core.Signal[scanProgress]
-	message  *core.Signal[string]
-	note     *core.Signal[string]
-	confirm  *core.Signal[bool]
-	dragging *core.Signal[bool]
-	speedMax *core.Signal[float64]
-	needle   *core.AnimatedValue
-	pulse    *core.AnimatedValue
-	pulseRun *core.AnimationRun
-	cancel   context.CancelFunc
+	groups      *core.Signal[[]db.DuplicateGroup]
+	total       *core.Signal[int]
+	summary     *core.Signal[appmodel.Summary]
+	scanDirs    *core.Signal[[]string]
+	scanPath    *core.Signal[string]
+	keep        *core.Signal[map[string]string]
+	scanning    *core.Signal[bool]
+	busy        *core.Signal[bool]
+	progress    *core.Signal[scanProgress]
+	message     *core.Signal[string]
+	note        *core.Signal[string]
+	noteSuccess *core.Signal[bool]
+	confirm     *core.Signal[bool]
+	dragging    *core.Signal[bool]
+	lang        *core.Signal[i18n.Lang]
+	speedMax    *core.Signal[float64]
+	needle      *core.AnimatedValue
+	pulse       *core.AnimatedValue
+	pulseRun    *core.AnimationRun
+	cancel      context.CancelFunc
 }
 
 func newState(cx *core.Scope, cfg Config) *state {
@@ -88,44 +90,92 @@ func newState(cx *core.Scope, cfg Config) *state {
 	if cfg.Scan == nil {
 		cfg.Scan = scanner.ScanContext
 	}
+	lang := i18n.Detect(cx.Env().Locale())
+	if saved, ok := cx.Storage().GetItem("language"); ok {
+		if savedLang, ok := i18n.Parse(saved); ok {
+			lang = savedLang
+		}
+	}
 
 	s := &state{
-		cfg:        cfg,
-		cx:         cx,
-		home:       home,
-		defaultDir: defaultDir,
-		groups:     core.NewSignalFunc(cx, []db.DuplicateGroup{}, nil),
-		total:      core.NewSignal(cx, 0),
-		summary:    core.NewSignal(cx, appmodel.Summary{}),
-		scanDirs:   core.NewSignalFunc(cx, []string{defaultDir}, nil),
-		scanPath:   core.NewSignal(cx, ""),
-		keep:       core.NewSignalFunc(cx, map[string]string{}, nil),
-		scanning:   core.NewSignal(cx, false),
-		busy:       core.NewSignal(cx, false),
-		progress:   core.NewSignal(cx, scanProgress{}),
-		message:    core.NewSignal(cx, ""),
-		note:       core.NewSignal(cx, ""),
-		confirm:    core.NewSignal(cx, false),
-		dragging:   core.NewSignal(cx, false),
-		speedMax:   core.NewSignal(cx, 40.0),
-		needle:     core.NewAnimatedValue(cx, 0),
-		pulse:      core.NewAnimatedValue(cx, 0),
+		cfg:         cfg,
+		cx:          cx,
+		home:        home,
+		defaultDir:  defaultDir,
+		groups:      core.NewSignalFunc(cx, []db.DuplicateGroup{}, nil),
+		total:       core.NewSignal(cx, 0),
+		summary:     core.NewSignal(cx, appmodel.Summary{}),
+		scanDirs:    core.NewSignalFunc(cx, []string{defaultDir}, nil),
+		scanPath:    core.NewSignal(cx, ""),
+		keep:        core.NewSignalFunc(cx, map[string]string{}, nil),
+		scanning:    core.NewSignal(cx, false),
+		busy:        core.NewSignal(cx, false),
+		progress:    core.NewSignal(cx, scanProgress{}),
+		message:     core.NewSignal(cx, ""),
+		note:        core.NewSignal(cx, ""),
+		noteSuccess: core.NewSignal(cx, false),
+		confirm:     core.NewSignal(cx, false),
+		dragging:    core.NewSignal(cx, false),
+		lang:        core.NewSignal(cx, lang),
+		speedMax:    core.NewSignal(cx, 40.0),
+		needle:      core.NewAnimatedValue(cx, 0),
+		pulse:       core.NewAnimatedValue(cx, 0),
 	}
 
 	switch {
 	case cfg.OpenErr != nil:
-		s.message.Set("Cannot open the index: " + cfg.OpenErr.Error())
+		s.message.Set(s.tf(i18n.KeyCannotOpenIndex, cfg.OpenErr))
 	case cfg.Store == nil:
-		s.message.Set("The index is not available.")
+		s.message.Set(s.t(i18n.KeyIndexUnavailable))
 	default:
 		groups, total, err := s.load()
 		if err != nil {
-			s.message.Set("Cannot read the index: " + err.Error())
+			s.message.Set(s.tf(i18n.KeyCannotReadIndex, err))
 		} else {
 			s.apply(groups, total)
 		}
 	}
 	return s
+}
+
+func (s *state) t(key i18n.Key) string {
+	return i18n.T(s.lang.Get(), key)
+}
+
+func (s *state) tf(key i18n.Key, args ...any) string {
+	return i18n.F(s.lang.Get(), key, args...)
+}
+
+func (s *state) fileCount(n int) string {
+	return i18n.FileCount(s.lang.Get(), n)
+}
+
+func (s *state) duplicateFileCount(n int) string {
+	return i18n.DuplicateFileCount(s.lang.Get(), n)
+}
+
+func (s *state) groupCount(n int) string {
+	return i18n.GroupCount(s.lang.Get(), n)
+}
+
+func (s *state) copyCount(n int) string {
+	return i18n.CopyCount(s.lang.Get(), n)
+}
+
+func (s *state) setLanguage(lang i18n.Lang) {
+	s.lang.Set(lang)
+	_ = s.cx.Storage().SetItem("language", string(lang))
+	s.setNote("", false)
+	s.message.Set("")
+}
+
+func (s *state) toggleLanguage() {
+	s.setLanguage(i18n.Next(s.lang.Get()))
+}
+
+func (s *state) setNote(text string, success bool) {
+	s.note.Set(text)
+	s.noteSuccess.Set(success)
 }
 
 func (s *state) load() ([]db.DuplicateGroup, int, error) {
@@ -179,7 +229,7 @@ func (s *state) refreshAsync(after func()) {
 		groups, total, err := s.load()
 		s.cx.Post(func() {
 			if err != nil {
-				s.message.Set("Cannot read the index: " + err.Error())
+				s.message.Set(s.tf(i18n.KeyCannotReadIndex, err))
 				return
 			}
 			s.apply(groups, total)
@@ -234,7 +284,7 @@ func (s *state) refresh() {
 	if s.scanning.Get() || s.busy.Get() {
 		return
 	}
-	s.refreshAsync(func() { s.note.Set("Index refreshed.") })
+	s.refreshAsync(func() { s.setNote(s.t(i18n.KeyIndexRefreshed), false) })
 }
 
 // addFolder normalizes and adds a folder, merging it with the selected tree.
@@ -251,16 +301,16 @@ func (s *state) addFolder(raw string) bool {
 	}
 	abs, err := filepath.Abs(path)
 	if err != nil {
-		s.message.Set("Cannot resolve the scan path: " + err.Error())
+		s.message.Set(s.tf(i18n.KeyCannotResolvePath, err))
 		return false
 	}
 	info, err := os.Stat(abs)
 	if err != nil {
-		s.message.Set("Cannot scan that folder: " + err.Error())
+		s.message.Set(s.tf(i18n.KeyCannotScanFolder, err))
 		return false
 	}
 	if !info.IsDir() {
-		s.message.Set("The scan path is not a folder: " + abs)
+		s.message.Set(s.tf(i18n.KeyNotAFolder, abs))
 		return false
 	}
 	roots := append([]string(nil), s.scanDirs.Get()...)
@@ -289,11 +339,11 @@ func (s *state) scanRootsLabel() string {
 	roots := s.scanDirs.Get()
 	switch len(roots) {
 	case 0:
-		return "no folders"
+		return s.t(i18n.KeyNoFolders)
 	case 1:
 		return displayPath(roots[0], s.home)
 	default:
-		return fmt.Sprintf("%d folders", len(roots))
+		return i18n.FolderCount(s.lang.Get(), len(roots))
 	}
 }
 
@@ -308,17 +358,17 @@ func (s *state) startScan() {
 	}
 	roots := appmodel.MergeRoots(s.scanDirs.Get())
 	if len(roots) == 0 {
-		s.message.Set("Add a folder to scan.")
+		s.message.Set(s.t(i18n.KeyAddFolderFirst))
 		return
 	}
 	for _, root := range roots {
 		info, err := os.Stat(root)
 		if err != nil {
-			s.message.Set("Cannot scan that folder: " + err.Error())
+			s.message.Set(s.tf(i18n.KeyCannotScanFolder, err))
 			return
 		}
 		if !info.IsDir() {
-			s.message.Set("The scan path is not a folder: " + root)
+			s.message.Set(s.tf(i18n.KeyNotAFolder, root))
 			return
 		}
 	}
@@ -341,7 +391,7 @@ func (s *state) startScan() {
 	), 0), nil)
 	s.scanning.Set(true)
 	s.message.Set("")
-	s.note.Set("")
+	s.setNote("", false)
 	go s.runScan(ctx, roots)
 }
 
@@ -413,12 +463,12 @@ func (s *state) runScan(ctx context.Context, roots []string) {
 		s.cancel = nil
 		s.progress.Set(p)
 		if cancelled {
-			s.note.Set("Scan canceled. The partial index is kept.")
+			s.setNote(s.t(i18n.KeyScanCanceled), false)
 		} else {
-			s.note.Set(fmt.Sprintf("Scan finished: %d files processed, %d unchanged skipped.", p.Done, p.Skipped))
+			s.setNote(s.tf(i18n.KeyScanFinished, p.Done, p.Skipped), false)
 		}
 		if p.Errors > 0 {
-			msg := fmt.Sprintf("%d file(s) could not be read", p.Errors)
+			msg := s.tf(i18n.KeyReadErrors, p.Errors)
 			if p.LastError != "" {
 				msg += ": " + p.LastError
 			}
@@ -447,7 +497,7 @@ func (s *state) animateSpeed(bytesPerSecond float64) {
 func (s *state) cancelScan() {
 	if s.cancel != nil {
 		s.cancel()
-		s.note.Set("Canceling the scan…")
+		s.setNote(s.t(i18n.KeyCanceling), false)
 	}
 }
 
@@ -470,7 +520,7 @@ func (s *state) confirmDelete() {
 	s.confirm.Set(false)
 	s.busy.Set(true)
 	s.message.Set("")
-	s.note.Set("")
+	s.setNote("", false)
 
 	targets := make([]cleaner.Target, len(plan.Targets))
 	for i, file := range plan.Targets {
@@ -486,8 +536,8 @@ func (s *state) confirmDelete() {
 			if err := cleaner.Verify(keep); err != nil {
 				s.cx.Post(func() {
 					s.busy.Set(false)
-					s.note.Set("Delete canceled: the copy to keep is no longer available.")
-					s.message.Set("Cannot keep " + keep.Path + ": " + err.Error() + ". Review the files again.")
+					s.setNote(s.t(i18n.KeyDeleteCanceledKeep), false)
+					s.message.Set(s.tf(i18n.KeyCannotKeep, keep.Path, err))
 					s.refreshAsync(nil)
 				})
 				return
@@ -514,21 +564,21 @@ func (s *state) confirmDelete() {
 			if result.IndexErr != nil {
 				failed++
 				if firstErr == "" {
-					firstErr = result.Path + ": index cleanup failed: " + result.IndexErr.Error()
+					firstErr = result.Path + ": " + s.t(i18n.KeyIndexCleanupFailed) + ": " + result.IndexErr.Error()
 				}
 			}
 		}
 		s.cx.Post(func() {
 			s.busy.Set(false)
-			note := fmt.Sprintf("Deleted %s, freed %s.", fileCount(deleted), format.Bytes(freed))
+			note := s.tf(i18n.KeyDeleted, s.fileCount(deleted), format.Bytes(freed))
 			if missing > 0 {
-				note += fmt.Sprintf(" %d was already gone.", missing)
+				note += " " + s.tf(i18n.KeyAlreadyGone, missing)
 			}
 			if failed > 0 {
-				note += fmt.Sprintf(" %d failed.", failed)
+				note += " " + s.tf(i18n.KeyFailed, failed)
 				s.message.Set(firstErr)
 			}
-			s.note.Set(note)
+			s.setNote(note, deleted > 0)
 			s.refreshAsync(nil)
 		})
 	}()
@@ -553,7 +603,7 @@ func (s *state) dropFiles(uris []string) {
 		}
 	}
 	if !added {
-		s.message.Set("Drop a folder to scan it.")
+		s.message.Set(s.t(i18n.KeyDropFolderFirst))
 		return
 	}
 	s.startScan()

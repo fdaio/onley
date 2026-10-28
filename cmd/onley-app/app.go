@@ -11,6 +11,7 @@ import (
 
 	"onley/internal/db"
 	"onley/internal/format"
+	"onley/internal/i18n"
 )
 
 // Root builds the app. Config is read once; tests pass a temporary store.
@@ -25,36 +26,41 @@ func Root(cfg Config) func(*core.Scope) core.Node {
 		s := newState(cx, cfg)
 		if desktop.IsAvailable(cx) {
 			desktop.SetTitle(cx, "Onley")
-			desktop.SetApplicationMenu(cx, []desktop.MenuItem{
-				{Label: "Onley", Items: []desktop.MenuItem{
-					{Role: desktop.MenuAbout},
-					{Separator: true},
-					{Role: desktop.MenuHide},
-					{Role: desktop.MenuHideOthers},
-					{Role: desktop.MenuShowAll},
-					{Separator: true},
-					{Role: desktop.MenuQuit},
-				}},
-				{Label: "File", Items: []desktop.MenuItem{
-					{Label: "Refresh index", Shortcut: "mod+r", OnSelect: s.refresh},
-					{Separator: true},
-					{Role: desktop.MenuClose},
-				}},
-				{Label: "Edit", Items: []desktop.MenuItem{
-					{Role: desktop.MenuUndo},
-					{Role: desktop.MenuRedo},
-					{Separator: true},
-					{Role: desktop.MenuCut},
-					{Role: desktop.MenuCopy},
-					{Role: desktop.MenuPaste},
-					{Role: desktop.MenuSelectAll},
-				}},
-			})
+			cx.Effect(func() { desktop.SetApplicationMenu(cx, s.menu()) })
 		}
 		return core.Dynamic(func(cx *core.Scope) core.Node {
 			_ = cx.Dark()
+			_ = s.lang.Get()
 			return s.view(cx)
 		})
+	}
+}
+
+func (s *state) menu() []desktop.MenuItem {
+	return []desktop.MenuItem{
+		{Label: "Onley", Items: []desktop.MenuItem{
+			{Role: desktop.MenuAbout},
+			{Separator: true},
+			{Role: desktop.MenuHide},
+			{Role: desktop.MenuHideOthers},
+			{Role: desktop.MenuShowAll},
+			{Separator: true},
+			{Role: desktop.MenuQuit},
+		}},
+		{Label: s.t(i18n.KeyFileMenu), Items: []desktop.MenuItem{
+			{Label: s.t(i18n.KeyRefreshIndex), Shortcut: "mod+r", OnSelect: s.refresh},
+			{Separator: true},
+			{Role: desktop.MenuClose},
+		}},
+		{Label: s.t(i18n.KeyEditMenu), Items: []desktop.MenuItem{
+			{Role: desktop.MenuUndo},
+			{Role: desktop.MenuRedo},
+			{Separator: true},
+			{Role: desktop.MenuCut},
+			{Role: desktop.MenuCopy},
+			{Role: desktop.MenuPaste},
+			{Role: desktop.MenuSelectAll},
+		}},
 	}
 }
 
@@ -95,13 +101,22 @@ func (s *state) header(cx *core.Scope) core.Node {
 			}, Children: []core.Node{line("O", 18, core.FontWeightBold, c.accentText)}},
 			core.View{Style: core.Style{Gap: 1}, Children: []core.Node{
 				line("Onley", 18, core.FontWeightBold, c.text),
-				line("Find and remove duplicate files", 11, core.FontWeightNormal, c.muted),
+				line(s.t(i18n.KeySubtitle), 11, core.FontWeightNormal, c.muted),
 			}},
 			spacer(),
-			badge(c, "Preview", c.accentSoft, c.accent),
-			line("Local only", 11, core.FontWeightNormal, c.muted),
+			s.languageButton(cx),
+			badge(c, s.t(i18n.KeyPreview), c.accentSoft, c.accent),
+			line(s.t(i18n.KeyLocalOnly), 11, core.FontWeightNormal, c.muted),
 		},
 	}
+}
+
+func (s *state) languageButton(cx *core.Scope) core.Node {
+	label := "中文"
+	if s.lang.Get() == i18n.Chinese {
+		label = "EN"
+	}
+	return appButton(cx, label, "language-toggle", buttonSecondary, nil, s.toggleLanguage)
 }
 
 func (s *state) banner(cx *core.Scope) core.Node {
@@ -118,7 +133,7 @@ func (s *state) banner(cx *core.Scope) core.Node {
 					core.Text{ContentFunc: func() string { return s.message.Get() }, MaxLines: 3, Selectable: core.SelectableOn,
 						Style: core.Style{FontSize: 12, Color: c.text}},
 				}},
-				appButton(cx, "Dismiss", "dismiss-error", buttonSecondary, nil, func() { s.message.Set("") }),
+				appButton(cx, s.t(i18n.KeyDismiss), "dismiss-error", buttonSecondary, nil, func() { s.message.Set("") }),
 			},
 		}
 	}}
@@ -155,14 +170,14 @@ func (s *state) statCard(cx *core.Scope, title, testID string, value func() stri
 func (s *state) statsCard(cx *core.Scope) core.Node {
 	c := colorsOf(cx)
 	return core.View{Style: cardStyle(c), Children: []core.Node{
-		line("Index", 13, core.FontWeightSemibold, c.text),
+		line(s.t(i18n.KeyIndex), 13, core.FontWeightSemibold, c.text),
 		core.View{Style: core.Style{Direction: core.Row, Gap: 8}, Children: []core.Node{
-			s.statCard(cx, "Indexed files", "stat-total", func() string { return fileCount(s.total.Get()) }),
-			s.statCard(cx, "Duplicate files", "stat-dupes", func() string { return fileCount(s.summary.Get().DuplicateFiles) }),
+			s.statCard(cx, s.t(i18n.KeyIndexedFiles), "stat-total", func() string { return s.fileCount(s.total.Get()) }),
+			s.statCard(cx, s.t(i18n.KeyDuplicateFiles), "stat-dupes", func() string { return s.fileCount(s.summary.Get().DuplicateFiles) }),
 		}},
 		core.View{Style: core.Style{Direction: core.Row, Gap: 8}, Children: []core.Node{
-			s.statCard(cx, "Groups", "stat-groups", func() string { return groupCount(s.summary.Get().Groups) }),
-			s.statCard(cx, "Reclaimable", "stat-reclaim", func() string { return format.Bytes(s.summary.Get().Wasted) }),
+			s.statCard(cx, s.t(i18n.KeyGroups), "stat-groups", func() string { return s.groupCount(s.summary.Get().Groups) }),
+			s.statCard(cx, s.t(i18n.KeyReclaimable), "stat-reclaim", func() string { return format.Bytes(s.summary.Get().Wasted) }),
 		}},
 	}}
 }
@@ -180,14 +195,14 @@ func (s *state) scanCard(cx *core.Scope) core.Node {
 		}
 	}
 	return core.View{Style: cardStyle(c), Children: []core.Node{
-		line("Scan folders", 15, core.FontWeightSemibold, c.text),
-		line("The index is shared with the onley CLI.", 11, core.FontWeightNormal, c.muted),
+		line(s.t(i18n.KeyScanFolders), 15, core.FontWeightSemibold, c.text),
+		line(s.t(i18n.KeySharedIndex), 11, core.FontWeightNormal, c.muted),
 		core.View{Style: core.Style{Direction: core.Row, Gap: 8}, Children: []core.Node{
 			core.View{Style: core.Style{FlexGrow: 1, MinWidth: core.Pt(0)}, Children: []core.Node{base.Input{
 				Value:       s.scanPath.Get,
 				OnChange:    s.scanPath.Set,
 				OnSubmit:    func(string) { s.addFolder(s.scanPath.Get()) },
-				Placeholder: "Add a folder",
+				Placeholder: s.t(i18n.KeyAddFolder),
 				Disabled:    func() bool { return s.scanning.Get() || s.busy.Get() },
 				TestID:      "scan-path",
 				Style: core.Style{
@@ -196,7 +211,7 @@ func (s *state) scanCard(cx *core.Scope) core.Node {
 					PlaceholderColor: c.muted,
 				},
 			}}},
-			appButton(cx, "Add", "add-folder", buttonSecondary, func() bool {
+			appButton(cx, s.t(i18n.KeyAdd), "add-folder", buttonSecondary, func() bool {
 				return s.scanning.Get() || s.busy.Get() || strings.TrimSpace(s.scanPath.Get()) == ""
 			}, func() { s.addFolder(s.scanPath.Get()) }),
 		}},
@@ -213,22 +228,18 @@ func (s *state) scanCard(cx *core.Scope) core.Node {
 						core.Text{ContentFunc: func() string { return displayPath(root(), s.home) }, MaxLines: 1,
 							Style: core.Style{FontSize: 11, Color: c.text, MinWidth: core.Pt(0)}},
 					}},
-					appButton(cx, "Remove", "remove-folder:"+root(), buttonSecondary,
+					appButton(cx, s.t(i18n.KeyRemove), "remove-folder:"+root(), buttonSecondary,
 						func() bool { return s.scanning.Get() || s.busy.Get() },
 						func() { s.removeFolder(root()) }),
 				}}
 			},
 		),
-		line("Child folders merge into their parent.", 10, core.FontWeightNormal, c.muted),
+		line(s.t(i18n.KeyMergeHint), 10, core.FontWeightNormal, c.muted),
 		core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 8}, Children: []core.Node{
 			core.Text{ContentFunc: func() string {
-				n := len(s.scanDirs.Get())
-				if n == 1 {
-					return "1 folder"
-				}
-				return fmt.Sprintf("%d folders", n)
+				return i18n.FolderCount(s.lang.Get(), len(s.scanDirs.Get()))
 			}, TestID: "scan-root-count", Style: core.Style{FlexGrow: 1, FontSize: 11, Color: c.muted}},
-			appButton(cx, "Scan all", "scan-button", buttonPrimary, func() bool {
+			appButton(cx, s.t(i18n.KeyScanAll), "scan-button", buttonPrimary, func() bool {
 				return s.scanning.Get() || s.busy.Get() || len(s.scanDirs.Get()) == 0
 			}, s.startScan),
 		}},
@@ -239,8 +250,8 @@ func (s *state) scanCard(cx *core.Scope) core.Node {
 			StyleFunc:       zoneStyle,
 			TestID:          "drop-zone",
 			Children: []core.Node{
-				line("Drop folders here", 12, core.FontWeightMedium, c.text),
-				line("they are added and merged before scanning", 11, core.FontWeightNormal, c.muted),
+				line(s.t(i18n.KeyDropFolders), 12, core.FontWeightMedium, c.text),
+				line(s.t(i18n.KeyDropHint), 11, core.FontWeightNormal, c.muted),
 			},
 		},
 	}}
@@ -256,13 +267,13 @@ func (s *state) scanningPanel(cx *core.Scope) core.Node {
 	style.Padding = core.All(24)
 	style.Gap = 12
 	return core.View{Style: style, Children: []core.Node{
-		line("Scanning", 22, core.FontWeightSemibold, c.text),
+		line(s.t(i18n.KeyScanning), 22, core.FontWeightSemibold, c.text),
 		core.Text{Content: s.scanRootsLabel(), MaxLines: 1,
 			Style: core.Style{FontSize: 12, Color: c.muted}},
 		core.Canvas{
 			Style:  core.Style{Width: core.Pct(100), Height: core.Pt(330)},
 			Draw:   s.drawGauge(c),
-			Label:  "Scan speed gauge",
+			Label:  s.t(i18n.KeyScanSpeedGauge),
 			TestID: "speed-gauge",
 		},
 		core.Text{ContentFunc: func() string { return speedText(s.progress.Get().Speed) },
@@ -270,13 +281,12 @@ func (s *state) scanningPanel(cx *core.Scope) core.Node {
 			Style:  core.Style{FontSize: 40, FontWeight: core.FontWeightBold, Color: c.text, TextAlign: core.TextAlignCenter}},
 		linef(func() string {
 			p := s.progress.Get()
-			return fmt.Sprintf("%s hashed · %s · %d skipped · %d errors",
-				format.Bytes(p.Hashed), fileCount(p.Done), p.Skipped, p.Errors)
+			return s.tf(i18n.KeyScanStats, format.Bytes(p.Hashed), s.fileCount(p.Done), p.Skipped, p.Errors)
 		}, 11, core.FontWeightNormal, c.muted),
 		linef(func() string {
-			return "elapsed " + formatDuration(s.progress.Get().Elapsed)
+			return s.tf(i18n.KeyElapsed, formatDuration(s.progress.Get().Elapsed))
 		}, 11, core.FontWeightNormal, c.muted),
-		appButton(cx, "Cancel scan", "cancel-scan", buttonSecondary, nil, s.cancelScan),
+		appButton(cx, s.t(i18n.KeyCancelScan), "cancel-scan", buttonSecondary, nil, s.cancelScan),
 	}}
 }
 
@@ -284,13 +294,13 @@ func (s *state) actionsCard(cx *core.Scope) core.Node {
 	c := colorsOf(cx)
 	disabled := func() bool { return s.scanning.Get() || s.busy.Get() }
 	return core.View{Style: cardStyle(c), Children: []core.Node{
-		line("Cleanup", 13, core.FontWeightSemibold, c.text),
+		line(s.t(i18n.KeyCleanup), 13, core.FontWeightSemibold, c.text),
 		core.View{Style: core.Style{Direction: core.Row, Gap: 8}, Children: []core.Node{
 			core.View{Style: core.Style{FlexGrow: 1}, Children: []core.Node{
-				appButton(cx, "Refresh index", "refresh", buttonSecondary, disabled, s.refresh),
+				appButton(cx, s.t(i18n.KeyRefreshIndex), "refresh", buttonSecondary, disabled, s.refresh),
 			}},
 			core.View{Style: core.Style{FlexGrow: 1}, Children: []core.Node{
-				appButton(cx, "Clear choices", "clear-keep", buttonSecondary,
+				appButton(cx, s.t(i18n.KeyClearChoices), "clear-keep", buttonSecondary,
 					func() bool { return disabled() || len(s.keep.Get()) == 0 }, s.clearKeep),
 			}},
 		}},
@@ -301,12 +311,12 @@ func (s *state) indexCard(cx *core.Scope) core.Node {
 	c := colorsOf(cx)
 	path := s.cfg.DBPath
 	if path == "" {
-		path = "not available"
+		path = s.t(i18n.KeyNotAvailable)
 	} else {
 		path = displayPath(path, s.home)
 	}
 	return core.View{Style: core.Style{Gap: 2, Padding: core.Edges{Left: 4, Right: 4}}, Children: []core.Node{
-		line("Index file", 11, core.FontWeightMedium, c.muted),
+		line(s.t(i18n.KeyIndexFile), 11, core.FontWeightMedium, c.muted),
 		core.Text{Content: path, MaxLines: 1, Selectable: core.SelectableOn,
 			Style: core.Style{FontSize: 10, Color: c.muted}},
 	}}
@@ -316,7 +326,7 @@ func (s *state) noteText(cx *core.Scope) core.Node {
 	c := colorsOf(cx)
 	return core.Show{When: func() bool { return s.note.Get() != "" }, Then: func(*core.Scope) core.Node {
 		color := c.muted
-		if strings.HasPrefix(s.note.Get(), "Deleted") {
+		if s.noteSuccess.Get() {
 			color = c.success
 		}
 		return core.Text{ContentFunc: func() string { return s.note.Get() }, Style: core.Style{FontSize: 12, LineHeight: 17, Color: color}}
@@ -335,10 +345,10 @@ func (s *state) groupsPanel(cx *core.Scope) core.Node {
 	c := colorsOf(cx)
 	return core.View{Style: core.Style{FlexGrow: 1, MinWidth: core.Pt(0), Gap: 10}, Children: []core.Node{
 		core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 10}, Children: []core.Node{
-			line("Duplicate groups", 18, core.FontWeightBold, c.text),
+			line(s.t(i18n.KeyDuplicateGroups), 18, core.FontWeightBold, c.text),
 			linef(func() string {
 				summary := s.summary.Get()
-				return fmt.Sprintf("%s · %s", groupCount(summary.Groups), duplicateFileCount(summary.DuplicateFiles))
+				return fmt.Sprintf("%s · %s", s.groupCount(summary.Groups), s.duplicateFileCount(summary.DuplicateFiles))
 			}, 12, core.FontWeightNormal, c.muted),
 		}},
 		core.List{
@@ -363,14 +373,11 @@ func (s *state) groupsPanel(cx *core.Scope) core.Node {
 func (s *state) emptyState(cx *core.Scope) core.Node {
 	c := colorsOf(cx)
 	available := s.cfg.Store != nil
-	title := "No duplicates yet"
-	body := "Scan a folder to build the index. Only files in the index can be deleted."
+	title := s.t(i18n.KeyNoDuplicates)
+	body := s.t(i18n.KeyEmptyBody)
 	if !available {
-		title = "Index unavailable"
-		body = "Close any process that holds the index, then reopen Onley."
-	} else if s.scanning.Get() {
-		title = "Scanning…"
-		body = "Duplicate groups appear when the scan finishes."
+		title = s.t(i18n.KeyIndexUnavailable)
+		body = s.t(i18n.KeyCloseIndexHolder)
 	}
 	return core.View{
 		TestID: "empty-state",
@@ -383,26 +390,10 @@ func (s *state) emptyState(cx *core.Scope) core.Node {
 				Width: core.Pt(44), Height: core.Pt(44), CornerRadius: 22,
 				Background: c.accentSoft, AlignItems: core.AlignCenter, JustifyContent: core.JustifyCenter,
 			}, Children: []core.Node{line("✓", 20, core.FontWeightSemibold, c.accent)}},
-			core.Text{ContentFunc: func() string {
-				if !available {
-					return "Index unavailable"
-				}
-				if s.scanning.Get() {
-					return "Scanning…"
-				}
-				return title
-			}, Style: core.Style{FontSize: 16, FontWeight: core.FontWeightSemibold, Color: c.text}},
-			core.Text{ContentFunc: func() string {
-				if !available {
-					return "Close any process that holds the index, then reopen Onley."
-				}
-				if s.scanning.Get() {
-					return "Duplicate groups appear when the scan finishes."
-				}
-				return body
-			}, Style: core.Style{FontSize: 12, Color: c.muted}},
-			core.Show{When: func() bool { return available && !s.scanning.Get() }, Then: func(cx *core.Scope) core.Node {
-				return appButton(cx, "Scan default folder", "empty-scan", buttonSecondary, nil, func() {
+			core.Text{Content: title, Style: core.Style{FontSize: 16, FontWeight: core.FontWeightSemibold, Color: c.text}},
+			core.Text{Content: body, Style: core.Style{FontSize: 12, Color: c.muted}},
+			core.Show{When: func() bool { return available }, Then: func(cx *core.Scope) core.Node {
+				return appButton(cx, s.t(i18n.KeyScanDefaultFolder), "empty-scan", buttonSecondary, nil, func() {
 					if s.addFolder(s.defaultDir) {
 						s.startScan()
 					}
@@ -425,16 +416,16 @@ func (s *state) actionBar(cx *core.Scope) core.Node {
 				core.Text{ContentFunc: func() string {
 					plan := s.plan()
 					if len(plan.Targets) == 0 {
-						return "Choose a copy, or keep one per group."
+						return s.t(i18n.KeyChooseCopyOrKeep)
 					}
-					return fmt.Sprintf("%s selected · %s reclaimable", fileCount(len(plan.Targets)), format.Bytes(plan.Bytes))
+					return s.tf(i18n.KeySelection, s.fileCount(len(plan.Targets)), format.Bytes(plan.Bytes))
 				}, Style: core.Style{FontSize: 13, FontWeight: core.FontWeightMedium, Color: c.text}},
-				line("Permanent deletion. You will confirm the exact files first.", 11, core.FontWeightNormal, c.muted),
+				line(s.t(i18n.KeyPermanentHint), 11, core.FontWeightNormal, c.muted),
 			}},
-			appButton(cx, "Keep one per group", "auto-keep", buttonSecondary, func() bool {
+			appButton(cx, s.t(i18n.KeyKeepOnePerGroup), "auto-keep", buttonSecondary, func() bool {
 				return s.scanning.Get() || s.busy.Get() || len(s.groups.Get()) == 0
 			}, s.autoKeep),
-			appButton(cx, "Review & delete", "review-delete", buttonDanger, func() bool {
+			appButton(cx, s.t(i18n.KeyReviewDelete), "review-delete", buttonDanger, func() bool {
 				return s.scanning.Get() || s.busy.Get() || len(s.plan().Targets) == 0
 			}, s.openConfirm),
 		},
@@ -453,15 +444,15 @@ func (s *state) confirmDialog(cx *core.Scope) core.Node {
 			Width: core.Pt(540), MaxWidth: core.Pct(90), Background: c.surface,
 			BorderWidth: 1, BorderColor: c.border, CornerRadius: 14, Padding: core.All(22), Gap: 12,
 		},
-		Label:  "Confirm delete",
+		Label:  s.t(i18n.KeyConfirmDelete),
 		TestID: "confirm-dialog",
 		Children: []core.Node{
-			line("Delete duplicates?", 20, core.FontWeightBold, c.text),
+			line(s.t(i18n.KeyDeleteDuplicates), 20, core.FontWeightBold, c.text),
 			core.Text{ContentFunc: func() string {
 				plan := s.plan()
-				return fmt.Sprintf("Delete %s and free %s?", fileCount(len(plan.Targets)), format.Bytes(plan.Bytes))
+				return s.tf(i18n.KeyDeleteConfirm, s.fileCount(len(plan.Targets)), format.Bytes(plan.Bytes))
 			}, Style: core.Style{FontSize: 14, Color: c.text}},
-			line("This cannot be undone. Files changed since the scan are skipped.", 12, core.FontWeightNormal, c.muted),
+			line(s.t(i18n.KeyCannotUndo), 12, core.FontWeightNormal, c.muted),
 			core.Each(
 				func() []db.FileRecord {
 					plan := s.plan()
@@ -477,11 +468,11 @@ func (s *state) confirmDialog(cx *core.Scope) core.Node {
 				},
 			),
 			core.Show{When: func() bool { return len(s.plan().Targets) > 5 }, Then: func(*core.Scope) core.Node {
-				return linef(func() string { return "and " + fileCount(len(s.plan().Targets)-5) + " more" }, 11, core.FontWeightNormal, c.muted)
+				return linef(func() string { return s.tf(i18n.KeyAndMore, len(s.plan().Targets)-5) }, 11, core.FontWeightNormal, c.muted)
 			}},
 			core.View{Style: core.Style{Direction: core.Row, JustifyContent: core.JustifyEnd, Gap: 8}, Children: []core.Node{
-				appButton(cx, "Cancel", "cancel-delete", buttonSecondary, func() bool { return s.busy.Get() }, func() { s.confirm.Set(false) }),
-				appButton(cx, "Delete permanently", "delete-confirm", buttonDanger, func() bool { return s.busy.Get() }, s.confirmDelete),
+				appButton(cx, s.t(i18n.KeyCancel), "cancel-delete", buttonSecondary, func() bool { return s.busy.Get() }, func() { s.confirm.Set(false) }),
+				appButton(cx, s.t(i18n.KeyDeletePermanently), "delete-confirm", buttonDanger, func() bool { return s.busy.Get() }, s.confirmDelete),
 			}},
 		},
 	}

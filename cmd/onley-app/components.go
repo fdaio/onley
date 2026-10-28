@@ -9,6 +9,7 @@ import (
 
 	"onley/internal/db"
 	"onley/internal/format"
+	"onley/internal/i18n"
 )
 
 type colors struct {
@@ -136,34 +137,6 @@ func radioDot(cx *core.Scope, checked func() bool) core.Node {
 	}
 }
 
-func fileCount(n int) string {
-	if n == 1 {
-		return "1 file"
-	}
-	return fmt.Sprintf("%d files", n)
-}
-
-func duplicateFileCount(n int) string {
-	if n == 1 {
-		return "1 duplicate file"
-	}
-	return fmt.Sprintf("%d duplicate files", n)
-}
-
-func groupCount(n int) string {
-	if n == 1 {
-		return "1 group"
-	}
-	return fmt.Sprintf("%d groups", n)
-}
-
-func copyCount(n int) string {
-	if n == 1 {
-		return "1 copy"
-	}
-	return fmt.Sprintf("%d copies", n)
-}
-
 func speedText(bytesPerSecond float64) string {
 	return format.Bytes(int64(bytesPerSecond)) + "/s"
 }
@@ -204,16 +177,16 @@ func (s *state) groupRow(cx *core.Scope, row core.ListRow) core.Node {
 			core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 8}, Children: []core.Node{
 				linef(func() string {
 					if _, ok := groupAt(); !ok {
-						return "Group"
+						return s.t(i18n.KeyGroupWord)
 					}
-					return fmt.Sprintf("Group %d", row.Index()+1)
+					return s.tf(i18n.KeyGroup, row.Index()+1)
 				}, 15, core.FontWeightSemibold, c.text),
 				linef(func() string {
 					group, ok := groupAt()
 					if !ok {
 						return ""
 					}
-					return fmt.Sprintf("%s · %s", format.Bytes(group.Size), copyCount(len(group.Files)))
+					return fmt.Sprintf("%s · %s", format.Bytes(group.Size), s.copyCount(len(group.Files)))
 				}, 12, core.FontWeightNormal, c.muted),
 				spacer(),
 				linef(func() string {
@@ -242,7 +215,7 @@ func (s *state) groupRow(cx *core.Scope, row core.ListRow) core.Node {
 				if !ok || s.keep.Get()[group.MD5] != "" {
 					return ""
 				}
-				return "Choose the copy to keep. A group without a choice is skipped."
+				return s.t(i18n.KeyKeepHint)
 			}, 12, core.FontWeightNormal, c.muted),
 		},
 	}
@@ -302,10 +275,10 @@ func (s *state) fileRow(cx *core.Scope, groupAt func() (db.DuplicateGroup, bool)
 			}},
 			linef(func() string { return format.Bytes(file().Size) }, 11, core.FontWeightNormal, c.muted),
 			core.Show{When: checked, Then: func(*core.Scope) core.Node {
-				return badge(c, "keep", c.accent, c.accentText)
+				return badge(c, s.t(i18n.KeyKeepBadge), c.accent, c.accentText)
 			}},
 			core.Show{When: deletePending, Then: func(*core.Scope) core.Node {
-				return badge(c, "delete", c.dangerSoft, c.danger)
+				return badge(c, s.t(i18n.KeyDeleteBadge), c.dangerSoft, c.danger)
 			}},
 		},
 	}

@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/oneo-me/nsgo/core"
 	"github.com/oneo-me/nsgo/nsgotest"
 
 	"onley/internal/db"
@@ -55,6 +56,39 @@ func startApp(t *testing.T, store *db.DB, dir string, scan func(context.Context,
 		Scan:       scan,
 	}
 	return nsgotest.Start(t, Root(cfg), nsgotest.Size(1080, 720))
+}
+
+func TestChineseLocaleDefault(t *testing.T) {
+	cfg := Config{Store: newStore(t), Home: t.TempDir(), DefaultDir: t.TempDir(), Workers: 2}
+	app := nsgotest.Start(t, Root(cfg), nsgotest.Size(1080, 720),
+		nsgotest.Environment(core.Environment{Locale: "zh-CN"}))
+	if !app.Exists("text:查找并删除重复文件") {
+		t.Fatalf("Chinese locale did not select Chinese\n%s", app.Dump())
+	}
+}
+
+func TestStoredLanguage(t *testing.T) {
+	cfg := Config{Store: newStore(t), Home: t.TempDir(), DefaultDir: t.TempDir(), Workers: 2}
+	app := nsgotest.Start(t, Root(cfg), nsgotest.Size(1080, 720),
+		nsgotest.Storage(map[string]string{"language": "zh"}))
+	if !app.Exists("text:查找并删除重复文件") {
+		t.Fatalf("stored language did not select Chinese\n%s", app.Dump())
+	}
+}
+
+func TestLanguageToggle(t *testing.T) {
+	app := startApp(t, newStore(t), t.TempDir(), nil)
+	if !app.Exists("text:Find and remove duplicate files") {
+		t.Fatalf("English subtitle missing\n%s", app.Dump())
+	}
+	app.Press("id:language-toggle")
+	app.WaitFor("text:查找并删除重复文件", 2*time.Second)
+	if !app.Exists("text:扫描文件夹") {
+		t.Errorf("Chinese scan card missing\n%s", app.Dump())
+	}
+	app.Screenshot("chinese")
+	app.Press("id:language-toggle")
+	app.WaitFor("text:Find and remove duplicate files", 2*time.Second)
 }
 
 func TestEmptyState(t *testing.T) {

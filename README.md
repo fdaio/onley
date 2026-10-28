@@ -90,13 +90,19 @@ Windows and Linux builds. The macOS app is the validated target in this
 preview. The Windows and Linux builds compile and package, but have not been
 run yet.
 
-The client shows the Midnight Terminal dark palette. It is desktop-only.
-Mobile and web clients need an onley service API, which this preview does not
-add. The client has no `watch`, replica, `config` or custom `-db` support; use
-the CLI for those. It takes a typed path or a dropped folder; there is no
-native folder picker yet. A scan or delete uses the default index only, and
-deletion is permanent. The app verifies each file's size and modification time before
-deleting it; an index from an older onley needs one rescan to record mtimes.
+The client shows the Midnight Terminal dark palette. It is available in English
+and Simplified Chinese. The first launch follows the system language; the
+EN/中文 button in the title bar switches it, and the choice is remembered.
+UI strings live in `internal/i18n`; add a catalog there to support another
+language.
+
+The client is desktop-only. Mobile and web clients need an onley service API,
+which this preview does not add. The client has no `watch`, replica, `config`
+or custom `-db` support; use the CLI for those. It takes a typed path or a
+dropped folder; there is no native folder picker yet. A scan or delete uses
+the default index only, and deletion is permanent. The app verifies each
+file's size and modification time before deleting it; an index from an older
+onley needs one rescan to record mtimes.
 The app is unsigned, so Gatekeeper may require opening it from the Finder
 context menu the first time. Third-party notices are in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
