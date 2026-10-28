@@ -27,10 +27,15 @@ tar xzf onley_<version>_darwin_arm64.tar.gz
 
 # Linux (x86-64)
 tar xzf onley_<version>_linux_amd64.tar.gz
+
+# macOS desktop preview (Apple silicon)
+unzip onley-desktop_v<version>_macos_arm64.zip
+open Onley.app
 ```
 
 Archives are published for darwin and linux on amd64 and arm64, plus windows on
-amd64, each with a `checksums.txt` alongside. See
+amd64, each with a `checksums.txt` alongside. The desktop preview is also
+published for macOS arm64/x64, Windows x64 and Linux x64. See
 [releases](https://github.com/Laotree/onley/releases).
 
 `go install` does not work and is not offered: the module path is `onley`, which
@@ -50,15 +55,16 @@ make build      # produces ./onley
 The NSGo desktop client covers the daily cleanup loop: scan a folder, review
 duplicate groups, choose one copy to keep per group, and delete the rest after
 one confirmation. It uses the same `~/.onley/local.db` index as the CLI.
+Release packages are unsigned; see the note below before opening one.
 
 Build and open it on macOS:
 
 ```sh
 make app
 # Apple silicon
-open cmd/onley-app/dist/Onley-0.1.0-macos_arm64/Onley.app
+open cmd/onley-app/dist/Onley-0.2.0-macos_arm64/Onley.app
 # Intel
-open cmd/onley-app/dist/Onley-0.1.0-macos_x64/Onley.app
+open cmd/onley-app/dist/Onley-0.2.0-macos_x64/Onley.app
 ```
 
 Building the app needs Go 1.27.3 and Xcode; NSGo is pinned in `go.mod`.
@@ -72,8 +78,8 @@ The client shows the Midnight Terminal dark palette. It is desktop-only.
 Mobile and web clients need an onley service API, which this preview does not
 add. The client has no `watch`, replica, `config` or custom `-db` support; use
 the CLI for those. It takes a typed path or a dropped folder; there is no
-native folder picker yet. A scan or delete uses the default index only, and deletion
-is permanent. The app verifies each file's size and modification time before
+native folder picker yet. A scan or delete uses the default index only, and
+deletion is permanent. The app verifies each file's size and modification time before
 deleting it; an index from an older onley needs one rescan to record mtimes.
 The app is unsigned, so Gatekeeper may require opening it from the Finder
 context menu the first time. Third-party notices are in
@@ -358,4 +364,4 @@ make lint       # golangci-lint
 make clean      # remove binary and coverage files
 ```
 
-Requirements: Go 1.26.4 or newer (the version the module declares)
+Requirements: Go 1.27.3 or newer (the version the module declares)
