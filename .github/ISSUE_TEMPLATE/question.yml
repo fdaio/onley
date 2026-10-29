@@ -1,0 +1,61 @@
+name: Question
+description: Ask about using or building onley.
+title: "[Question]: "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ask a usage question here. For a bug, use the bug report template.
+        For a security issue, follow the [security policy](https://github.com/fdaio/onley/security/policy)
+        instead.
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before you start
+      options:
+        - label: I searched existing issues and read the README.
+          required: true
+        - label: I removed secrets, tokens, and private data from this question.
+          required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: What do you want to know?
+    validations:
+      required: true
+  - type: textarea
+    id: tried
+    attributes:
+      label: What have you tried?
+      description: Include commands and their output.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: onley version
+      description: The release tag or commit SHA.
+      placeholder: v0.2.7
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Linux
+        - Windows
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Relevant output
+      description: Remove personal paths and secrets.
+      render: shell
+    validations:
+      required: false
