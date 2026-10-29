@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>Code signing policy — Onley</title>
-  <meta name="description" content="Onley code signing policy: SignPath Foundation for Windows, Developer ID and notarization for macOS.">
+  <meta name="description" content="Onley code signing policy: planned SignPath Foundation signing for Windows, Developer ID and notarization for macOS.">
   <link rel="icon" href="assets/logo.png">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -27,9 +27,23 @@
     <a class="back" href="./">← Back to Onley</a>
     <p class="eyebrow">Code signing policy</p>
     <h1>Signed builds, verified sources.</h1>
+
+    <h2>Current status</h2>
     <p>
-      Free code signing provided by <a href="https://about.signpath.io">SignPath.io</a>,
-      certificate by <a href="https://signpath.org">SignPath Foundation</a>.
+      Windows code signing is in progress. The Windows CLI and desktop
+      executables in the current releases are not code signed yet.
+    </p>
+    <p>
+      Release builds of the macOS desktop app are signed with an Apple Developer
+      ID and notarized. Linux packages are not code signed.
+    </p>
+
+    <h2>Signing provider</h2>
+    <p>
+      The project is seeking free code signing from
+      <a href="https://about.signpath.io">SignPath.io</a>, with a certificate
+      from the <a href="https://signpath.org">SignPath Foundation</a>. This is
+      not active yet.
     </p>
 
     <h2>Scope</h2>
@@ -48,18 +62,18 @@
       <li>Source: <a href="https://github.com/fdaio/onley">github.com/fdaio/onley</a></li>
       <li>License: MIT</li>
       <li>Builds: GitHub Actions, <code>.github/workflows/release.yml</code>, tag <code>v*</code></li>
-      <li>Only artifacts built from the tagged commit in that workflow are signed. Local builds are not signed.</li>
-      <li>The build sets the product name and version metadata; every artifact in a release uses the same version.</li>
+      <li>Only artifacts built from the tagged commit in that workflow are eligible for signing. Local builds are not signed.</li>
+      <li>The desktop build sets the product name and version from <code>cmd/onley-app/nsgo.yaml</code>. Release assets use the tag as their version. The CLI binary does not embed version metadata.</li>
     </ul>
 
     <h2>Roles</h2>
     <ul>
       <li>Committers and reviewers: <a href="https://github.com/fdaio/onley/graphs/contributors">repository contributors</a>, including <a href="https://github.com/Laotree">@Laotree</a>.</li>
       <li>Approvers: <a href="https://github.com/Laotree">@Laotree</a>, repository owner.</li>
-      <li>Every signing request needs manual approval by an approver after the release candidate passes CI.</li>
+      <li>After signing is active, every signing request needs manual approval by an approver after the release candidate passes CI.</li>
     </ul>
 
-    <h2>Signing process</h2>
+    <h2>Signing process after approval</h2>
     <ol>
       <li>A <code>v*</code> tag starts the release workflow.</li>
       <li>CI builds the Windows CLI and desktop packages.</li>
