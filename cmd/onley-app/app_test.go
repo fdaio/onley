@@ -104,6 +104,33 @@ func TestEmptyState(t *testing.T) {
 	if !app.Exists("text:No duplicates yet") {
 		t.Errorf("empty title missing\n%s", app.Dump())
 	}
+	if app.Exists("text:✓") {
+		t.Errorf("empty state still uses the text check glyph\n%s", app.Dump())
+	}
+}
+
+func TestButtonHoverAndPress(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "a.bin", strings.Repeat("a", 4096))
+	writeFile(t, dir, "b.bin", strings.Repeat("a", 4096))
+	store := newStore(t)
+	scanInto(t, store, dir)
+
+	app := startApp(t, store, dir, nil)
+	idle := app.Find("id:auto-keep").Style.Background
+	app.Hover("id:auto-keep")
+	if got := app.Find("id:auto-keep").Style.Background; got == idle {
+		t.Errorf("hover background unchanged: %v", got)
+	}
+	app.PressDown("id:auto-keep")
+	if got := app.Find("id:auto-keep").Style.Background; got == idle {
+		t.Errorf("pressed background unchanged: %v", got)
+	}
+	app.PressUp("id:auto-keep")
+	app.HoverOut()
+	if got := app.Find("id:auto-keep").Style.Background; got != idle {
+		t.Errorf("released background = %v, want %v", got, idle)
+	}
 }
 
 func TestAddFolderMergesParentChild(t *testing.T) {

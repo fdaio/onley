@@ -395,11 +395,17 @@ func (s *state) startScan() {
 	s.pulse.Set(0)
 	if s.pulseRun != nil {
 		s.pulseRun.Stop()
+		s.pulseRun = nil
 	}
-	s.pulseRun = s.cx.StartAnimation(core.Loop(core.Sequence(
-		core.Timing(s.pulse, 1, core.TimingConfig{Duration: 900 * time.Millisecond}),
-		core.Timing(s.pulse, 0, core.TimingConfig{Duration: 900 * time.Millisecond}),
-	), 0), nil)
+	if s.cx.Env().ReduceMotion() {
+		// Keep the gauge static when the system asks for less motion.
+		s.pulse.Set(1)
+	} else {
+		s.pulseRun = s.cx.StartAnimation(core.Loop(core.Sequence(
+			core.Timing(s.pulse, 1, core.TimingConfig{Duration: 900 * time.Millisecond}),
+			core.Timing(s.pulse, 0, core.TimingConfig{Duration: 900 * time.Millisecond}),
+		), 0), nil)
+	}
 	s.scanning.Set(true)
 	s.message.Set("")
 	s.setNote("", false)
@@ -502,6 +508,10 @@ func (s *state) animateSpeed(bytesPerSecond float64) {
 		percent = mb / ceiling * 100
 	}
 	percent = max(0, min(100, percent))
+	if s.cx.Env().ReduceMotion() {
+		s.needle.Set(percent)
+		return
+	}
 	s.cx.StartAnimation(core.Spring(s.needle, percent, core.SpringConfig{Stiffness: 80, Damping: 14}), nil)
 }
 

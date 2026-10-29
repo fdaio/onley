@@ -14,17 +14,23 @@ import (
 )
 
 type colors struct {
-	background core.Color
-	surface    core.Color
-	border     core.Color
-	text       core.Color
-	muted      core.Color
-	accent     core.Color
-	accentText core.Color
-	accentSoft core.Color
-	danger     core.Color
-	dangerSoft core.Color
-	success    core.Color
+	background     core.Color
+	surface        core.Color
+	surfaceHover   core.Color
+	surfacePressed core.Color
+	border         core.Color
+	text           core.Color
+	muted          core.Color
+	accent         core.Color
+	accentHover    core.Color
+	accentPressed  core.Color
+	accentText     core.Color
+	accentSoft     core.Color
+	danger         core.Color
+	dangerHover    core.Color
+	dangerPressed  core.Color
+	dangerSoft     core.Color
+	success        core.Color
 }
 
 func colorsOf(cx *core.Scope) colors {
@@ -33,17 +39,23 @@ func colorsOf(cx *core.Scope) colors {
 		p = cx.Theme().Dark
 	}
 	return colors{
-		background: p.Background,
-		surface:    p.Surface,
-		border:     p.Border,
-		text:       p.Text,
-		muted:      p.TextMuted,
-		accent:     p.Accent,
-		accentText: p.AccentText,
-		accentSoft: p.Accent.Faded(0.12),
-		danger:     p.Danger,
-		dangerSoft: p.Danger.Faded(0.14),
-		success:    p.Success,
+		background:     p.Background,
+		surface:        p.Surface,
+		surfaceHover:   p.SurfaceHover,
+		surfacePressed: p.SurfacePressed,
+		border:         p.Border,
+		text:           p.Text,
+		muted:          p.TextMuted,
+		accent:         p.Accent,
+		accentHover:    p.AccentHover,
+		accentPressed:  p.AccentPressed,
+		accentText:     p.AccentText,
+		accentSoft:     p.Accent.Faded(0.12),
+		danger:         p.Danger,
+		dangerHover:    p.Danger.Faded(0.82),
+		dangerPressed:  p.Danger.Faded(0.7),
+		dangerSoft:     p.Danger.Faded(0.14),
+		success:        p.Success,
 	}
 }
 
@@ -83,33 +95,29 @@ const (
 
 func appButton(cx *core.Scope, label, testID string, kind buttonKind, disabled func() bool, onPress func()) core.Node {
 	c := colorsOf(cx)
-	background, foreground, border := c.accent, c.accentText, c.accent
+	background, hover, pressed, foreground, border := c.accent, c.accentHover, c.accentPressed, c.accentText, c.accent
 	switch kind {
 	case buttonSecondary:
-		background, foreground, border = c.background, c.text, c.border
+		background, hover, pressed, foreground, border = c.background, c.surfaceHover, c.surfacePressed, c.text, c.border
 	case buttonDanger:
-		background, foreground, border = c.danger, c.background, c.danger
+		background, hover, pressed, foreground, border = c.danger, c.dangerHover, c.dangerPressed, c.background, c.danger
 	}
-	isDisabled := func() bool { return disabled != nil && disabled() }
 	return base.Button{
 		OnPress: func(core.PressEvent) {
 			if onPress != nil {
 				onPress()
 			}
 		},
-		Disabled: isDisabled,
+		Disabled: disabled,
 		Label:    label,
 		TestID:   testID,
 		Style: core.Style{
 			Background: background, BorderWidth: 1, BorderColor: border,
 			CornerRadius: 8, Padding: core.Symmetric(9, 14),
 			AlignItems: core.AlignCenter, JustifyContent: core.JustifyCenter,
-		},
-		StyleFunc: func() core.Style {
-			if isDisabled() {
-				return core.Style{Opacity: core.Alpha(0.45)}
-			}
-			return core.Style{}
+			Hover:    &core.Style{Background: hover},
+			Active:   &core.Style{Background: pressed},
+			Disabled: &core.Style{Opacity: core.Alpha(0.45)},
 		},
 		Children: []core.Node{line(label, 13, core.FontWeightSemibold, foreground)},
 	}
@@ -120,19 +128,18 @@ func (s *state) policyButton(cx *core.Scope, label, testID string, policy appmod
 	selected := func() bool { return s.keepPolicy.Get() == policy }
 	return base.Button{
 		OnPress:  func(core.PressEvent) { s.setKeepPolicy(policy) },
+		Disabled: func() bool { return s.scanning.Get() || s.busy.Get() },
+		Selected: selected,
 		Label:    label,
 		TestID:   testID,
-		Disabled: func() bool { return s.scanning.Get() || s.busy.Get() },
 		Style: core.Style{
 			Background: c.background, BorderWidth: 1, BorderColor: c.border,
 			CornerRadius: 7, Padding: core.Symmetric(6, 10),
 			AlignItems: core.AlignCenter, JustifyContent: core.JustifyCenter,
-		},
-		StyleFunc: func() core.Style {
-			if selected() {
-				return core.Style{Background: c.accentSoft, BorderColor: c.accent}
-			}
-			return core.Style{}
+			Hover:    &core.Style{Background: c.surfaceHover},
+			Active:   &core.Style{Background: c.surfacePressed},
+			Selected: &core.Style{Background: c.accentSoft, BorderColor: c.accent},
+			Disabled: &core.Style{Opacity: core.Alpha(0.45)},
 		},
 		Children: []core.Node{line(label, 12, core.FontWeightMedium, c.text)},
 	}
