@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -41,6 +40,9 @@ func Root(cfg Config) func(*core.Scope) core.Node {
 			_ = cx.Dark()
 			_ = s.lang.Get()
 			_ = s.keepPolicy.Get()
+			_ = s.keep.Get()
+			_ = s.groups.Get()
+			_ = s.summary.Get()
 			return s.view(cx)
 		})
 	}
@@ -86,11 +88,11 @@ func (s *state) view(cx *core.Scope) core.Node {
 			s.banner(cx),
 			core.View{Style: core.Style{
 				FlexGrow: 1, FlexBasis: core.Pt(0), MinHeight: core.Pt(0),
-				Direction: core.Row, Gap: 16, Padding: core.All(16),
+				Direction: core.Column, Gap: 16, Padding: core.Symmetric(24, 32),
 			}, Children: []core.Node{
-				s.sidebar(cx),
 				s.results(cx),
 			}},
+			s.addFolderDialog(cx),
 			s.confirmDialog(cx),
 		},
 	}
@@ -101,7 +103,7 @@ func (s *state) header(cx *core.Scope) core.Node {
 	return core.View{
 		Style: core.Style{
 			FlexShrink: 0, Direction: core.Row, AlignItems: core.AlignCenter, Gap: 12,
-			Padding: core.Symmetric(12, 18), Background: c.surface,
+			Padding: core.Symmetric(14, 32), Background: c.background,
 			Borders: core.Edges{Bottom: 1}, BorderColor: c.border,
 		},
 		Children: []core.Node{
@@ -109,14 +111,10 @@ func (s *state) header(cx *core.Scope) core.Node {
 				Width: core.Pt(34), Height: core.Pt(34), CornerRadius: 10,
 				Background: c.accent, AlignItems: core.AlignCenter, JustifyContent: core.JustifyCenter,
 			}, Children: []core.Node{line("O", 18, core.FontWeightBold, c.accentText)}},
-			core.View{Style: core.Style{Gap: 1}, Children: []core.Node{
-				line("Onley", 18, core.FontWeightBold, c.text),
-				line(s.t(i18n.KeySubtitle), 11, core.FontWeightNormal, c.muted),
-			}},
+			line("Onley", 21, core.FontWeightBold, c.text),
 			spacer(),
+			line(s.t(i18n.KeyLocalOnly), 12, core.FontWeightNormal, c.muted),
 			s.languageButton(cx),
-			badge(c, s.t(i18n.KeyPreview), c.accentSoft, c.accent),
-			line(s.t(i18n.KeyLocalOnly), 11, core.FontWeightNormal, c.muted),
 		},
 	}
 }
@@ -146,122 +144,6 @@ func (s *state) banner(cx *core.Scope) core.Node {
 				appButton(cx, s.t(i18n.KeyDismiss), "dismiss-error", buttonSecondary, nil, func() { s.message.Set("") }),
 			},
 		}
-	}}
-}
-
-func (s *state) sidebar(cx *core.Scope) core.Node {
-	return core.Scroll{
-		Style: core.Style{Width: core.Pt(330), FlexShrink: 0},
-		Children: []core.Node{core.View{Style: core.Style{Gap: 12, Padding: core.Edges{Bottom: 4}}, Children: []core.Node{
-			s.statsCard(cx),
-			s.scanCard(cx),
-			s.actionsCard(cx),
-			s.indexCard(cx),
-			s.noteText(cx),
-		}}},
-	}
-}
-
-func (s *state) statCard(cx *core.Scope, title, testID string, value func() string) core.Node {
-	c := colorsOf(cx)
-	return core.View{
-		Style: core.Style{
-			FlexGrow: 1, MinWidth: core.Pt(0),
-			Padding: core.Symmetric(4, 0), Gap: 2,
-		},
-		Children: []core.Node{
-			core.Text{ContentFunc: value, TestID: testID, Style: core.Style{FontSize: 20, FontWeight: core.FontWeightBold, Color: c.text}},
-			line(title, 11, core.FontWeightNormal, c.muted),
-		},
-	}
-}
-
-func (s *state) statsCard(cx *core.Scope) core.Node {
-	c := colorsOf(cx)
-	return core.View{Style: cardStyle(c), Children: []core.Node{
-		line(s.t(i18n.KeyIndex), 13, core.FontWeightSemibold, c.text),
-		core.View{Style: core.Style{Direction: core.Row, Gap: 8}, Children: []core.Node{
-			s.statCard(cx, s.t(i18n.KeyIndexedFiles), "stat-total", func() string { return s.fileCount(s.total.Get()) }),
-			s.statCard(cx, s.t(i18n.KeyDuplicateFiles), "stat-dupes", func() string { return s.fileCount(s.summary.Get().DuplicateFiles) }),
-		}},
-		core.View{Style: core.Style{Direction: core.Row, Gap: 8}, Children: []core.Node{
-			s.statCard(cx, s.t(i18n.KeyGroups), "stat-groups", func() string { return s.groupCount(s.summary.Get().Groups) }),
-			s.statCard(cx, s.t(i18n.KeyReclaimable), "stat-reclaim", func() string { return format.Bytes(s.summary.Get().Wasted) }),
-		}},
-	}}
-}
-
-func (s *state) scanCard(cx *core.Scope) core.Node {
-	c := colorsOf(cx)
-	zoneStyle := func() core.Style {
-		background, border := c.background, c.border
-		if s.dragging.Get() {
-			background, border = c.accentSoft, c.accent
-		}
-		return core.Style{
-			Height: core.Pt(66), Background: background, BorderWidth: 1, BorderColor: border,
-			CornerRadius: 8, AlignItems: core.AlignCenter, JustifyContent: core.JustifyCenter, Gap: 2,
-		}
-	}
-	return core.View{Style: cardStyle(c), Children: []core.Node{
-		line(s.t(i18n.KeyScanFolders), 15, core.FontWeightSemibold, c.text),
-		line(s.t(i18n.KeySharedIndex), 11, core.FontWeightNormal, c.muted),
-		core.View{Style: core.Style{Direction: core.Row, Gap: 8}, Children: []core.Node{
-			core.View{Style: core.Style{FlexGrow: 1, MinWidth: core.Pt(0)}, Children: []core.Node{base.Input{
-				Value:       s.scanPath.Get,
-				OnChange:    s.scanPath.Set,
-				OnSubmit:    func(string) { s.addFolder(s.scanPath.Get()) },
-				Placeholder: s.t(i18n.KeyAddFolder),
-				Disabled:    func() bool { return s.scanning.Get() || s.busy.Get() },
-				TestID:      "scan-path",
-				Style: core.Style{
-					Height: core.Pt(36), Background: c.background, BorderWidth: 1, BorderColor: c.border,
-					CornerRadius: 8, Padding: core.Symmetric(7, 10), FontSize: 13, Color: c.text,
-					PlaceholderColor: c.muted,
-				},
-			}}},
-			appButton(cx, s.t(i18n.KeyAdd), "add-folder", buttonSecondary, func() bool {
-				return s.scanning.Get() || s.busy.Get() || strings.TrimSpace(s.scanPath.Get()) == ""
-			}, func() { s.addFolder(s.scanPath.Get()) }),
-		}},
-		core.Each(
-			func() []string { return s.scanDirs.Get() },
-			func(root string) string { return root },
-			func(cx *core.Scope, root func() string, _ func() int) core.Node {
-				return core.View{Style: core.Style{
-					Direction: core.Row, AlignItems: core.AlignCenter, Gap: 6,
-					Padding: core.Symmetric(6, 4),
-				}, Children: []core.Node{
-					core.View{Style: core.Style{FlexGrow: 1, FlexShrink: 1, MinWidth: core.Pt(0)}, Children: []core.Node{
-						core.Text{ContentFunc: func() string { return displayPath(root(), s.home) }, MaxLines: 1,
-							Style: core.Style{FontSize: 11, Color: c.text, MinWidth: core.Pt(0)}},
-					}},
-					appButton(cx, s.t(i18n.KeyRemove), "remove-folder:"+root(), buttonSecondary,
-						func() bool { return s.scanning.Get() || s.busy.Get() },
-						func() { s.removeFolder(root()) }),
-				}}
-			},
-		),
-		line(s.t(i18n.KeyMergeHint), 11, core.FontWeightNormal, c.muted),
-		core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 8}, Children: []core.Node{
-			core.Text{ContentFunc: func() string {
-				return i18n.FolderCount(s.lang.Get(), len(s.scanDirs.Get()))
-			}, TestID: "scan-root-count", Style: core.Style{FlexGrow: 1, FontSize: 11, Color: c.muted}},
-			appButton(cx, s.t(i18n.KeyScanAll), "scan-button", buttonPrimary, func() bool {
-				return s.scanning.Get() || s.busy.Get() || len(s.scanDirs.Get()) == 0
-			}, s.startScan),
-		}},
-		core.View{
-			OnFileDrop:      s.dropFiles,
-			OnFileDragEnter: func() { s.dragging.Set(true) },
-			OnFileDragLeave: func() { s.dragging.Set(false) },
-			StyleFunc:       zoneStyle,
-			TestID:          "drop-zone",
-			Children: []core.Node{
-				line(s.t(i18n.KeyDropFolders), 12, core.FontWeightMedium, c.text),
-				line(s.t(i18n.KeyDropHint), 11, core.FontWeightNormal, c.muted),
-			},
-		},
 	}}
 }
 
@@ -301,38 +183,6 @@ func (s *state) scanningPanel(cx *core.Scope) core.Node {
 	}}
 }
 
-func (s *state) actionsCard(cx *core.Scope) core.Node {
-	c := colorsOf(cx)
-	disabled := func() bool { return s.scanning.Get() || s.busy.Get() }
-	return core.View{Style: cardStyle(c), Children: []core.Node{
-		line(s.t(i18n.KeyCleanup), 13, core.FontWeightSemibold, c.text),
-		core.View{Style: core.Style{Direction: core.Row, Gap: 8}, Children: []core.Node{
-			core.View{Style: core.Style{FlexGrow: 1}, Children: []core.Node{
-				appButton(cx, s.t(i18n.KeyRefreshIndex), "refresh", buttonSecondary, disabled, s.refresh),
-			}},
-			core.View{Style: core.Style{FlexGrow: 1}, Children: []core.Node{
-				appButton(cx, s.t(i18n.KeyClearChoices), "clear-keep", buttonSecondary,
-					func() bool { return disabled() || len(s.keep.Get()) == 0 }, s.clearKeep),
-			}},
-		}},
-	}}
-}
-
-func (s *state) indexCard(cx *core.Scope) core.Node {
-	c := colorsOf(cx)
-	path := s.cfg.DBPath
-	if path == "" {
-		path = s.t(i18n.KeyNotAvailable)
-	} else {
-		path = displayPath(path, s.home)
-	}
-	return core.View{Style: core.Style{Gap: 2, Padding: core.Edges{Left: 4, Right: 4}}, Children: []core.Node{
-		line(s.t(i18n.KeyIndexFile), 11, core.FontWeightMedium, c.muted),
-		core.Text{Content: path, MaxLines: 1, Selectable: core.SelectableOn,
-			Style: core.Style{FontSize: 11, Color: c.muted}},
-	}}
-}
-
 func (s *state) noteText(cx *core.Scope) core.Node {
 	c := colorsOf(cx)
 	return core.Show{When: func() bool { return s.note.Get() != "" }, Then: func(*core.Scope) core.Node {
@@ -354,13 +204,15 @@ func (s *state) results(cx *core.Scope) core.Node {
 
 func (s *state) groupsPanel(cx *core.Scope) core.Node {
 	c := colorsOf(cx)
-	return core.View{Style: core.Style{FlexGrow: 1, MinWidth: core.Pt(0), Gap: 10}, Children: []core.Node{
-		core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 10}, Children: []core.Node{
-			line(s.t(i18n.KeyDuplicateGroups), 18, core.FontWeightBold, c.text),
-			linef(func() string {
-				summary := s.summary.Get()
-				return fmt.Sprintf("%s · %s", s.groupCount(summary.Groups), s.duplicateFileCount(summary.DuplicateFiles))
-			}, 12, core.FontWeightNormal, c.muted),
+	return core.View{Style: core.Style{FlexGrow: 1, MinWidth: core.Pt(0), Gap: 18}, Children: []core.Node{
+		core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 16}, Children: []core.Node{
+			core.View{Style: core.Style{FlexGrow: 1, MinWidth: core.Pt(0), Gap: 2}, Children: []core.Node{
+				core.Text{ContentFunc: s.duplicateGroupTitle, TestID: "group-summary",
+					Style: core.Style{FontSize: 32, FontWeight: core.FontWeightBold, Color: c.text}},
+				core.Text{ContentFunc: s.duplicateSummary, TestID: "duplicate-summary",
+					Style: core.Style{FontSize: 13, FontWeight: core.FontWeightNormal, Color: c.muted}},
+			}},
+			s.autoKeepControl(cx),
 		}},
 		core.List{
 			Count: func() int { return len(s.groups.Get()) },
@@ -373,12 +225,134 @@ func (s *state) groupsPanel(cx *core.Scope) core.Node {
 			},
 			Row:           s.groupRow,
 			EstimatedSize: 150,
-			Gap:           10,
+			Gap:           12,
 			Style:         core.Style{FlexGrow: 1, MinHeight: core.Pt(0)},
 			Empty:         s.emptyState(cx),
 		},
-		s.actionBar(cx),
+		s.noteText(cx),
+		s.bottomBar(cx),
 	}}
+}
+
+func (s *state) autoKeepControl(cx *core.Scope) core.Node {
+	c := colorsOf(cx)
+	return core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 10}, Children: []core.Node{
+		line(s.t(i18n.KeyAutoKeep), 12, core.FontWeightNormal, c.muted),
+		core.View{Style: core.Style{
+			Direction: core.Row, Gap: 2, Padding: core.All(2),
+			Background: c.background, BorderWidth: 1, BorderColor: c.border, CornerRadius: 8,
+		}, Children: []core.Node{
+			s.policySegment(cx, s.t(i18n.KeyNewest), "policy-newest", appmodel.KeepNewest),
+			s.policySegment(cx, s.t(i18n.KeyOldest), "policy-oldest", appmodel.KeepOldest),
+		}},
+	}}
+}
+
+func (s *state) bottomBar(cx *core.Scope) core.Node {
+	c := colorsOf(cx)
+	disabled := func() bool { return s.scanning.Get() || s.busy.Get() }
+	return core.View{
+		Style: core.Style{
+			FlexShrink: 0, Direction: core.Row, AlignItems: core.AlignCenter, Gap: 12,
+			Background: c.surface, BorderWidth: 1, BorderColor: c.border,
+			CornerRadius: 12, Padding: core.Symmetric(10, 14),
+		},
+		Children: []core.Node{
+			core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 8, FlexGrow: 1, MinWidth: core.Pt(0), Wrap: core.Wrap}, Children: append([]core.Node{
+				core.Each(
+					func() []string { return s.scanDirs.Get() },
+					func(root string) string { return root },
+					func(cx *core.Scope, root func() string, _ func() int) core.Node {
+						return s.folderTag(cx, root())
+					},
+				),
+				s.addFolderButton(cx),
+			}, appButton(cx, s.t(i18n.KeyRescan), "scan-button", buttonGhost, func() bool {
+				return disabled() || len(s.scanDirs.Get()) == 0
+			}, s.startScan))},
+			core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 12}, Children: []core.Node{
+				core.Text{Content: s.t(i18n.KeyPermanentHint), MaxLines: 2,
+					Style: core.Style{Width: core.Pt(220), FontSize: 11, Color: c.muted, TextAlign: core.TextAlignEnd}},
+				appButton(cx, s.deleteLabel(), "delete-files", buttonDanger, func() bool {
+					return disabled() || len(s.plan().Targets) == 0
+				}, s.openConfirm),
+			}},
+		},
+	}
+}
+
+func (s *state) folderTag(cx *core.Scope, root string) core.Node {
+	c := colorsOf(cx)
+	return core.View{TestID: "folder:" + root, Style: core.Style{
+		Direction: core.Row, AlignItems: core.AlignCenter,
+		MaxWidth: core.Pt(220), MinWidth: core.Pt(0), Overflow: core.Hidden,
+		Background: c.background, BorderWidth: 1, BorderColor: c.border,
+		CornerRadius: 999, Padding: core.Symmetric(4, 10),
+	}, Children: []core.Node{
+		core.Text{Content: displayPath(root, s.home), MaxLines: 1, EllipsizeMode: core.EllipsizeTail,
+			Style: core.Style{MaxWidth: core.Pt(198), MinWidth: core.Pt(0), FontSize: 12, Color: c.muted}},
+	}}
+}
+
+func (s *state) addFolderButton(cx *core.Scope) core.Node {
+	c := colorsOf(cx)
+	return base.Button{
+		OnPress:  func(core.PressEvent) { s.openAddFolder() },
+		Disabled: func() bool { return s.scanning.Get() || s.busy.Get() },
+		Label:    s.t(i18n.KeyAddFolder),
+		TestID:   "add-folder",
+		Style: core.Style{
+			Background: c.surface, BorderWidth: 1, BorderColor: c.border, BorderStyle: core.BorderDashed,
+			CornerRadius: 999, Padding: core.Symmetric(4, 10),
+			Hover:    &core.Style{Background: c.surfaceHover},
+			Active:   &core.Style{Background: c.surfacePressed},
+			Disabled: &core.Style{Opacity: core.Alpha(0.45)},
+		},
+		Children: []core.Node{line("+ "+s.t(i18n.KeyAddFolder), 11, core.FontWeightNormal, c.muted)},
+	}
+}
+
+func (s *state) addFolderDialog(cx *core.Scope) core.Node {
+	c := colorsOf(cx)
+	return base.Dialog{
+		Open: s.addingFolder.Get,
+		OnOpenChange: func(open bool, _ base.Reason) {
+			s.addingFolder.Set(open)
+		},
+		BackdropStyle: core.Style{Background: core.RGBA(0x000000, 0.4)},
+		PopupStyle: core.Style{
+			Width: core.Pt(500), MaxWidth: core.Pct(90), Background: c.surface,
+			BorderWidth: 1, BorderColor: c.border, CornerRadius: 14, Padding: core.All(22), Gap: 12,
+		},
+		Label:  s.t(i18n.KeyAddFolder),
+		TestID: "add-folder-dialog",
+		Children: []core.Node{
+			line(s.t(i18n.KeyAddFolder), 18, core.FontWeightBold, c.text),
+			base.Input{
+				Value:       s.scanPath.Get,
+				OnChange:    s.scanPath.Set,
+				OnSubmit:    func(string) { s.confirmAddFolder() },
+				Placeholder: s.t(i18n.KeyAddFolder),
+				Disabled:    func() bool { return s.scanning.Get() || s.busy.Get() },
+				TestID:      "scan-path",
+				Style: core.Style{
+					Height: core.Pt(38), Background: c.background, BorderWidth: 1, BorderColor: c.border,
+					CornerRadius: 8, Padding: core.Symmetric(8, 10), FontSize: 13, Color: c.text,
+					PlaceholderColor: c.muted,
+				},
+			},
+			core.Show{When: func() bool { return s.message.Get() != "" }, Then: func(*core.Scope) core.Node {
+				return core.Text{ContentFunc: func() string { return s.message.Get() }, TestID: "add-folder-error",
+					Style: core.Style{FontSize: 11, Color: c.danger}}
+			}},
+			core.View{Style: core.Style{Direction: core.Row, JustifyContent: core.JustifyEnd, Gap: 8}, Children: []core.Node{
+				appButton(cx, s.t(i18n.KeyCancel), "cancel-add-folder", buttonSecondary, func() bool { return s.busy.Get() }, s.closeAddFolder),
+				appButton(cx, s.t(i18n.KeyAdd), "add-folder-confirm", buttonPrimary, func() bool {
+					return s.scanning.Get() || s.busy.Get() || strings.TrimSpace(s.scanPath.Get()) == ""
+				}, s.confirmAddFolder),
+			}},
+		},
+	}
 }
 
 func (s *state) emptyState(cx *core.Scope) core.Node {
@@ -412,44 +386,6 @@ func (s *state) emptyState(cx *core.Scope) core.Node {
 						s.startScan()
 					}
 				})
-			}},
-		},
-	}
-}
-
-func (s *state) actionBar(cx *core.Scope) core.Node {
-	c := colorsOf(cx)
-	return core.View{
-		Style: core.Style{
-			FlexShrink: 0, Direction: core.Column, Gap: 8,
-			Background: c.surface, BorderWidth: 1, BorderColor: c.border,
-			CornerRadius: 12, Padding: core.All(12),
-		},
-		Children: []core.Node{
-			core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 12}, Children: []core.Node{
-				core.View{Style: core.Style{FlexGrow: 1, MinWidth: core.Pt(0), Gap: 2}, Children: []core.Node{
-					core.Text{ContentFunc: func() string {
-						plan := s.plan()
-						if len(plan.Targets) == 0 {
-							return s.t(i18n.KeyChooseCopyOrKeep)
-						}
-						return s.tf(i18n.KeySelection, s.fileCount(len(plan.Targets)), format.Bytes(plan.Bytes))
-					}, Style: core.Style{FontSize: 13, FontWeight: core.FontWeightMedium, Color: c.text}},
-					line(s.t(i18n.KeyPermanentHint), 11, core.FontWeightNormal, c.muted),
-				}},
-				appButton(cx, s.t(i18n.KeyReviewDelete), "review-delete", buttonDanger, func() bool {
-					return s.scanning.Get() || s.busy.Get() || len(s.plan().Targets) == 0
-				}, s.openConfirm),
-			}},
-			core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 8}, Children: []core.Node{
-				line(s.t(i18n.KeyKeepPolicy), 11, core.FontWeightMedium, c.muted),
-				s.policyButton(cx, s.t(i18n.KeyNewest), "policy-newest", appmodel.KeepNewest),
-				s.policyButton(cx, s.t(i18n.KeyOldest), "policy-oldest", appmodel.KeepOldest),
-				line(s.t(i18n.KeyPolicyHint), 11, core.FontWeightNormal, c.muted),
-				spacer(),
-				appButton(cx, s.t(i18n.KeyKeepOne), "auto-keep", buttonSecondary, func() bool {
-					return s.scanning.Get() || s.busy.Get() || len(s.groups.Get()) == 0
-				}, s.autoKeep),
 			}},
 		},
 	}
