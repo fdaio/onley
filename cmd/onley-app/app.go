@@ -9,6 +9,7 @@ import (
 	"github.com/oneo-me/nsgo/core"
 	"github.com/oneo-me/nsgo/desktop"
 
+	"onley/internal/appmodel"
 	"onley/internal/db"
 	"onley/internal/format"
 	"onley/internal/i18n"
@@ -31,6 +32,7 @@ func Root(cfg Config) func(*core.Scope) core.Node {
 		return core.Dynamic(func(cx *core.Scope) core.Node {
 			_ = cx.Dark()
 			_ = s.lang.Get()
+			_ = s.keepPolicy.Get()
 			return s.view(cx)
 		})
 	}
@@ -407,27 +409,36 @@ func (s *state) actionBar(cx *core.Scope) core.Node {
 	c := colorsOf(cx)
 	return core.View{
 		Style: core.Style{
-			FlexShrink: 0, Direction: core.Row, AlignItems: core.AlignCenter, Gap: 12,
+			FlexShrink: 0, Direction: core.Column, Gap: 8,
 			Background: c.surface, BorderWidth: 1, BorderColor: c.border,
 			CornerRadius: 12, Padding: core.All(12),
 		},
 		Children: []core.Node{
-			core.View{Style: core.Style{FlexGrow: 1, MinWidth: core.Pt(0), Gap: 2}, Children: []core.Node{
-				core.Text{ContentFunc: func() string {
-					plan := s.plan()
-					if len(plan.Targets) == 0 {
-						return s.t(i18n.KeyChooseCopyOrKeep)
-					}
-					return s.tf(i18n.KeySelection, s.fileCount(len(plan.Targets)), format.Bytes(plan.Bytes))
-				}, Style: core.Style{FontSize: 13, FontWeight: core.FontWeightMedium, Color: c.text}},
-				line(s.t(i18n.KeyPermanentHint), 11, core.FontWeightNormal, c.muted),
+			core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 12}, Children: []core.Node{
+				core.View{Style: core.Style{FlexGrow: 1, MinWidth: core.Pt(0), Gap: 2}, Children: []core.Node{
+					core.Text{ContentFunc: func() string {
+						plan := s.plan()
+						if len(plan.Targets) == 0 {
+							return s.t(i18n.KeyChooseCopyOrKeep)
+						}
+						return s.tf(i18n.KeySelection, s.fileCount(len(plan.Targets)), format.Bytes(plan.Bytes))
+					}, Style: core.Style{FontSize: 13, FontWeight: core.FontWeightMedium, Color: c.text}},
+					line(s.t(i18n.KeyPermanentHint), 11, core.FontWeightNormal, c.muted),
+				}},
+				appButton(cx, s.t(i18n.KeyReviewDelete), "review-delete", buttonDanger, func() bool {
+					return s.scanning.Get() || s.busy.Get() || len(s.plan().Targets) == 0
+				}, s.openConfirm),
 			}},
-			appButton(cx, s.t(i18n.KeyKeepOnePerGroup), "auto-keep", buttonSecondary, func() bool {
-				return s.scanning.Get() || s.busy.Get() || len(s.groups.Get()) == 0
-			}, s.autoKeep),
-			appButton(cx, s.t(i18n.KeyReviewDelete), "review-delete", buttonDanger, func() bool {
-				return s.scanning.Get() || s.busy.Get() || len(s.plan().Targets) == 0
-			}, s.openConfirm),
+			core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 8}, Children: []core.Node{
+				line(s.t(i18n.KeyKeepPolicy), 11, core.FontWeightMedium, c.muted),
+				s.policyButton(cx, s.t(i18n.KeyNewest), "policy-newest", appmodel.KeepNewest),
+				s.policyButton(cx, s.t(i18n.KeyOldest), "policy-oldest", appmodel.KeepOldest),
+				line(s.t(i18n.KeyPolicyHint), 9, core.FontWeightNormal, c.muted),
+				spacer(),
+				appButton(cx, s.t(i18n.KeyKeepOne), "auto-keep", buttonSecondary, func() bool {
+					return s.scanning.Get() || s.busy.Get() || len(s.groups.Get()) == 0
+				}, s.autoKeep),
+			}},
 		},
 	}
 }

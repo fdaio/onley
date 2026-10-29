@@ -51,6 +51,7 @@ type state struct {
 	scanDirs    *core.Signal[[]string]
 	scanPath    *core.Signal[string]
 	keep        *core.Signal[map[string]string]
+	keepPolicy  *core.Signal[appmodel.KeepPolicy]
 	scanning    *core.Signal[bool]
 	busy        *core.Signal[bool]
 	progress    *core.Signal[scanProgress]
@@ -96,6 +97,12 @@ func newState(cx *core.Scope, cfg Config) *state {
 			lang = savedLang
 		}
 	}
+	policy := appmodel.KeepNewest
+	if saved, ok := cx.Storage().GetItem("keep_policy"); ok {
+		if savedPolicy, ok := appmodel.ParseKeepPolicy(saved); ok {
+			policy = savedPolicy
+		}
+	}
 
 	s := &state{
 		cfg:         cfg,
@@ -108,6 +115,7 @@ func newState(cx *core.Scope, cfg Config) *state {
 		scanDirs:    core.NewSignalFunc(cx, []string{defaultDir}, nil),
 		scanPath:    core.NewSignal(cx, ""),
 		keep:        core.NewSignalFunc(cx, map[string]string{}, nil),
+		keepPolicy:  core.NewSignal(cx, policy),
 		scanning:    core.NewSignal(cx, false),
 		busy:        core.NewSignal(cx, false),
 		progress:    core.NewSignal(cx, scanProgress{}),
@@ -253,30 +261,33 @@ func (s *state) setKeep(md5, path string) {
 	s.keep.Set(next)
 }
 
-func (s *state) keepFirst() {
-	if s.scanning.Get() || s.busy.Get() {
+func (s *state) setKeepPolicy(policy appmodel.KeepPolicy) {
+	if s.keepPolicy.Get() == policy {
 		return
 	}
-	next := make(map[string]string)
-	for _, group := range s.groups.Get() {
-		if len(group.Files) > 0 {
-			next[group.MD5] = group.Files[0].Path
-		}
-	}
-	s.keep.Set(next)
+	s.keepPolicy.Set(policy)
+	_ = s.cx.Storage().SetItem("keep_policy", policy.String())
+	s.keep.Set(map[string]string{})
 }
 
 func (s *state) clearKeep() {
 	s.keep.Set(map[string]string{})
 }
 
-// autoKeep selects one file in every group and opens the deletion review. The
-// selection is still a plan: nothing is deleted until the dialog is confirmed.
+// autoKeep selects one file per group using the current policy and opens the
+// deletion review. Nothing is deleted until the dialog is confirmed.
 func (s *state) autoKeep() {
 	if s.scanning.Get() || s.busy.Get() {
 		return
 	}
-	s.keepFirst()
+	policy := s.keepPolicy.Get()
+	next := make(map[string]string)
+	for _, group := range s.groups.Get() {
+		if len(group.Files) > 0 {
+			next[group.MD5] = appmodel.ChooseKeep(group, policy).Path
+		}
+	}
+	s.keep.Set(next)
 	s.openConfirm()
 }
 
