@@ -105,7 +105,10 @@ the default index only, and deletion is permanent. The app verifies each
 file's size and modification time before deleting it; an index from an older
 onley needs one rescan to record mtimes. The client never deletes its own
 running executable. If Onley is in a duplicate group, it must stay as the copy
-to keep; Windows locks the running executable.
+to keep; Windows locks the running executable. On Windows and Linux the native
+menu bar hides until Alt; the system draws it, so it does not use the app
+palette. On macOS the menu bar follows the system appearance; use Dark Mode to
+match the Midnight Terminal window.
 The app is unsigned, so Gatekeeper may require opening it from the Finder
 context menu the first time. Third-party notices are in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

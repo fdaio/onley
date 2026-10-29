@@ -28,7 +28,14 @@ func Root(cfg Config) func(*core.Scope) core.Node {
 		s := newState(cx, cfg)
 		if desktop.IsAvailable(cx) {
 			desktop.SetTitle(cx, "Onley")
-			cx.Effect(func() { desktop.SetApplicationMenu(cx, s.menu()) })
+			cx.Effect(func() {
+				desktop.SetApplicationMenu(cx, s.menu())
+				if cx.Env().OS() != core.OSMacOS {
+					// Native menu bars are system-drawn. Hide the light bar
+					// by default; Alt still reveals it with its shortcuts.
+					desktop.SetMenuBar(cx, desktop.MenuBarAutoHide)
+				}
+			})
 		}
 		return core.Dynamic(func(cx *core.Scope) core.Node {
 			_ = cx.Dark()

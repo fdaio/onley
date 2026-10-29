@@ -73,6 +73,21 @@ func TestChineseLocaleDefault(t *testing.T) {
 	}
 }
 
+func TestWindowsMenuBarAutoHides(t *testing.T) {
+	if target := nsgotest.Target(); target != "" {
+		t.Skipf("checks the headless window model, not %s", target)
+	}
+	cfg := Config{Store: newStore(t), Home: t.TempDir(), DefaultDir: t.TempDir(), Workers: 2}
+	app := nsgotest.Start(t, Root(cfg), nsgotest.Size(1080, 720),
+		nsgotest.Environment(core.Environment{OS: core.OSWindows}))
+	for _, command := range app.Window {
+		if command.Action == core.WindowSetMenuBar && command.MenuBar == core.MenuBarAutoHide {
+			return
+		}
+	}
+	t.Fatalf("menu bar was not set to auto-hide: %+v", app.Window)
+}
+
 func TestStoredLanguage(t *testing.T) {
 	cfg := Config{Store: newStore(t), Home: t.TempDir(), DefaultDir: t.TempDir(), Workers: 2}
 	app := nsgotest.Start(t, Root(cfg), nsgotest.Size(1080, 720),

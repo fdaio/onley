@@ -93,8 +93,10 @@ NSGo 仍处于 early 阶段、没有稳定 API，升级应作为独立任务。
 扫描路径可以输入或拖入文件夹，暂未提供原生目录选择器。扫描与删除只操作默认
 索引，删除不可撤销。删除前会校验文件大小和修改时间；旧版本建立的索引需要
 重新扫描一次才能记录 mtime。Onley 不会删除正在运行的自身程序；如果自身出现
-在重复组中，它只能作为保留副本，Windows 也会锁定运行中的 exe。应用未签名，
-首次打开可能需要在 Finder 中右键选择“打开”。第三方声明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+在重复组中，它只能作为保留副本，Windows 也会锁定运行中的 exe。
+Windows 与 Linux 的原生菜单栏默认隐藏，按 Alt 显示；它由系统绘制，不跟随应用
+配色。macOS 的顶部菜单栏跟随系统外观，切换深色模式后与 Midnight Terminal
+窗口一致。应用未签名，首次打开可能需要在 Finder 中右键选择“打开”。第三方声明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
 无头测试随仓库测试一起跑；macOS 原生 UI 测试需要 Xcode：
 
