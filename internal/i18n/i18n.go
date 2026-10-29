@@ -84,6 +84,7 @@ const (
 	KeyScanStats          Key = "scanStats"
 	KeyElapsed            Key = "elapsed"
 	KeyCancelScan         Key = "cancelScan"
+	KeyCancelScanHint     Key = "cancelScanHint"
 	KeyScanCanceled       Key = "scanCanceled"
 	KeyScanFinished       Key = "scanFinished"
 	KeyReadErrors         Key = "readErrors"
@@ -172,6 +173,7 @@ var messages = map[Lang]map[Key]string{
 		KeyScanStats:          "%s hashed · %s · %d skipped · %d errors",
 		KeyElapsed:            "elapsed %s",
 		KeyCancelScan:         "Cancel scan",
+		KeyCancelScanHint:     "Finished files are saved. Scan again to resume.",
 		KeyScanCanceled:       "Scan canceled. The partial index is kept.",
 		KeyScanFinished:       "Scan finished: %d files processed, %d unchanged skipped.",
 		KeyReadErrors:         "%d file(s) could not be read",
@@ -258,6 +260,7 @@ var messages = map[Lang]map[Key]string{
 		KeyScanStats:          "已读取 %s · %s · 跳过 %d · 错误 %d",
 		KeyElapsed:            "耗时 %s",
 		KeyCancelScan:         "取消扫描",
+		KeyCancelScanHint:     "已完成的文件会保存，重新扫描即可继续。",
 		KeyScanCanceled:       "扫描已取消，保留部分索引。",
 		KeyScanFinished:       "扫描完成：已处理 %d 个文件，跳过 %d 个未变化文件。",
 		KeyReadErrors:         "%d 个文件无法读取",

@@ -510,6 +510,9 @@ func TestScanShowsSpeedGauge(t *testing.T) {
 	if speed := app.Find("id:scan-speed").Text; !strings.Contains(speed, "MB/s") {
 		t.Errorf("speed = %q, want MB/s", speed)
 	}
+	if !app.Exists("text:Finished files are saved. Scan again to resume.") {
+		t.Errorf("resume hint missing\n%s", app.Dump())
+	}
 	app.Screenshot("scanning")
 	app.Press("id:cancel-scan")
 	app.WaitFor("text:Scan canceled. The partial index is kept.", 5*time.Second)
@@ -545,6 +548,7 @@ func TestCancelScan(t *testing.T) {
 	app := startApp(t, store, dir, scan)
 	app.Press("id:scan-button")
 	app.WaitFor("id:cancel-scan", 2*time.Second)
+	app.WaitFor("text:Finished files are saved. Scan again to resume.", 2*time.Second)
 	app.Press("id:cancel-scan")
 	app.WaitFor("text:Scan canceled. The partial index is kept.", 5*time.Second)
 	if app.Exists("id:cancel-scan") {
