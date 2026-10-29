@@ -106,6 +106,10 @@ go test ./...
 cd cmd/onley-app && go tool nsgo test -target macos
 ```
 
+## 代码签名政策
+
+Windows 二进制按项目的[代码签名政策](CODE_SIGNING.md)签名：由 [SignPath.io](https://about.signpath.io) 提供免费代码签名，证书由 [SignPath Foundation](https://signpath.org) 提供。
+
 ## 快速上手
 
 ```sh
