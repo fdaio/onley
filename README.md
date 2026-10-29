@@ -122,6 +122,10 @@ go test ./...
 cd cmd/onley-app && go tool nsgo test -target macos
 ```
 
+## Code signing policy
+
+Windows binaries are covered by the project's [code signing policy](CODE_SIGNING.md): free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+
 ## Quick start
 
 ```sh
