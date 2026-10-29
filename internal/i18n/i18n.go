@@ -130,8 +130,11 @@ const (
 	KeyGroupWord          Key = "groupWord"
 	KeyGroup              Key = "group"
 	KeyKeepHint           Key = "keepHint"
+	KeySelfKeepHint       Key = "selfKeepHint"
 	KeyKeepBadge          Key = "keepBadge"
+	KeyRunning            Key = "running"
 	KeyDeleteBadge        Key = "deleteBadge"
+	KeyCannotDeleteSelf   Key = "cannotDeleteSelf"
 	KeyFileMenu           Key = "fileMenu"
 	KeyEditMenu           Key = "editMenu"
 )
@@ -215,8 +218,11 @@ var messages = map[Lang]map[Key]string{
 		KeyGroupWord:          "Group",
 		KeyGroup:              "Group %d",
 		KeyKeepHint:           "Choose the copy to keep. A group without a choice is skipped.",
+		KeySelfKeepHint:       "Onley keeps its running executable. Select it to delete the other copies.",
 		KeyKeepBadge:          "keep",
+		KeyRunning:            "running",
 		KeyDeleteBadge:        "delete",
+		KeyCannotDeleteSelf:   "Onley cannot delete its own running executable.",
 		KeyFileMenu:           "File",
 		KeyEditMenu:           "Edit",
 	},
@@ -298,8 +304,11 @@ var messages = map[Lang]map[Key]string{
 		KeyGroupWord:          "组",
 		KeyGroup:              "第 %d 组",
 		KeyKeepHint:           "请选择要保留的副本。未选择的组会被跳过。",
+		KeySelfKeepHint:       "Onley 会保留正在运行的自身程序。选中它即可删除其他副本。",
 		KeyKeepBadge:          "保留",
+		KeyRunning:            "运行中",
 		KeyDeleteBadge:        "删除",
+		KeyCannotDeleteSelf:   "Onley 无法删除正在运行的自身程序。",
 		KeyFileMenu:           "文件",
 		KeyEditMenu:           "编辑",
 	},

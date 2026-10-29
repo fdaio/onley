@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"maps"
 	"os"
 	"path/filepath"
@@ -16,6 +17,7 @@ import (
 	"onley/internal/format"
 	"onley/internal/i18n"
 	"onley/internal/scanner"
+	"onley/internal/selfpath"
 )
 
 // Config is what the app needs to run and what tests replace.
@@ -26,6 +28,7 @@ type Config struct {
 	Workers    int
 	Home       string
 	DefaultDir string
+	SelfPath   string
 	Scan       func(context.Context, string, *db.DB, int) <-chan scanner.Progress
 }
 
@@ -44,6 +47,7 @@ type state struct {
 	cx         *core.Scope
 	home       string
 	defaultDir string
+	selfPath   string
 
 	groups      *core.Signal[[]db.DuplicateGroup]
 	total       *core.Signal[int]
@@ -103,12 +107,17 @@ func newState(cx *core.Scope, cfg Config) *state {
 			policy = savedPolicy
 		}
 	}
+	selfPath := cfg.SelfPath
+	if selfPath == "" {
+		selfPath = selfpath.Resolve()
+	}
 
 	s := &state{
 		cfg:         cfg,
 		cx:          cx,
 		home:        home,
 		defaultDir:  defaultDir,
+		selfPath:    selfPath,
 		groups:      core.NewSignalFunc(cx, []db.DuplicateGroup{}, nil),
 		total:       core.NewSignal(cx, 0),
 		summary:     core.NewSignal(cx, appmodel.Summary{}),
@@ -217,6 +226,13 @@ func (s *state) pruneKeep(groups []db.DuplicateGroup) {
 		if !ok {
 			continue
 		}
+		if self, found := appmodel.ProtectedFile(group, s.selfPath); found {
+			// A stale choice must not make the running executable a target.
+			if selfpath.Same(path, self.Path) {
+				next[group.MD5] = path
+			}
+			continue
+		}
 		for _, file := range group.Files {
 			if file.Path == path {
 				next[group.MD5] = path
@@ -249,10 +265,19 @@ func (s *state) refreshAsync(after func()) {
 }
 
 func (s *state) plan() appmodel.Plan {
-	return appmodel.BuildPlan(s.groups.Get(), s.keep.Get())
+	return appmodel.BuildPlan(s.groups.Get(), s.keep.Get(), s.selfPath)
 }
 
 func (s *state) setKeep(md5, path string) {
+	for _, group := range s.groups.Get() {
+		if group.MD5 != md5 {
+			continue
+		}
+		if self, found := appmodel.ProtectedFile(group, s.selfPath); found && !selfpath.Same(path, self.Path) {
+			return
+		}
+		break
+	}
 	next := maps.Clone(s.keep.Get())
 	if next == nil {
 		next = make(map[string]string)
@@ -283,6 +308,10 @@ func (s *state) autoKeep() {
 	policy := s.keepPolicy.Get()
 	next := make(map[string]string)
 	for _, group := range s.groups.Get() {
+		if self, found := appmodel.ProtectedFile(group, s.selfPath); found {
+			next[group.MD5] = self.Path
+			continue
+		}
 		if len(group.Files) > 0 {
 			next[group.MD5] = appmodel.ChooseKeep(group, policy).Path
 		}
@@ -579,7 +608,11 @@ func (s *state) confirmDelete() {
 			if result.Err != nil {
 				failed++
 				if firstErr == "" {
-					firstErr = result.Path + ": " + result.Err.Error()
+					if errors.Is(result.Err, cleaner.ErrSelfDelete) {
+						firstErr = result.Path + ": " + s.t(i18n.KeyCannotDeleteSelf)
+					} else {
+						firstErr = result.Path + ": " + result.Err.Error()
+					}
 				}
 			}
 			if result.IndexErr != nil {

@@ -139,6 +139,24 @@ func TestDeleteVerifyRefusesLegacyRecordWithoutMtime(t *testing.T) {
 	}
 }
 
+func TestDeleteRefusesRunningExecutable(t *testing.T) {
+	store := openDB(t)
+	dir := t.TempDir()
+	path := filepath.Join(dir, "onley.exe")
+	target := writeIndexed(t, store, path, "running")
+
+	results := deleteWithProtect(store, []Target{target}, true, path)
+	if len(results) != 1 || !errors.Is(results[0].Err, ErrSelfDelete) || results[0].Deleted {
+		t.Fatalf("results = %+v", results)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Errorf("running executable was deleted: %v", err)
+	}
+	if rec, err := store.Lookup(path); err != nil || rec == nil {
+		t.Errorf("record missing after refusal: %v, %v", rec, err)
+	}
+}
+
 func TestDeleteContinuesAfterFailure(t *testing.T) {
 	store := openDB(t)
 	dir := t.TempDir()

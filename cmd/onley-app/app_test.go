@@ -47,12 +47,18 @@ func scanInto(t *testing.T, store *db.DB, dir string) {
 
 func startApp(t *testing.T, store *db.DB, dir string, scan func(context.Context, string, *db.DB, int) <-chan scanner.Progress) *nsgotest.App {
 	t.Helper()
+	return startAppWithSelf(t, store, dir, scan, "")
+}
+
+func startAppWithSelf(t *testing.T, store *db.DB, dir string, scan func(context.Context, string, *db.DB, int) <-chan scanner.Progress, selfPath string) *nsgotest.App {
+	t.Helper()
 	cfg := Config{
 		Store:      store,
 		DBPath:     filepath.Join(t.TempDir(), "index.db"),
 		Home:       t.TempDir(),
 		DefaultDir: dir,
 		Workers:    2,
+		SelfPath:   selfPath,
 		Scan:       scan,
 	}
 	return nsgotest.Start(t, Root(cfg), nsgotest.Size(1080, 720))
@@ -419,6 +425,44 @@ func TestAutoKeepOldestAcrossGroups(t *testing.T) {
 		if _, err := os.Stat(path); !os.IsNotExist(err) {
 			t.Errorf("new copy %s still exists: %v", path, err)
 		}
+	}
+}
+
+func TestAutoKeepKeepsRunningExecutable(t *testing.T) {
+	dir := t.TempDir()
+	self := writeFile(t, dir, "Onley.exe", strings.Repeat("a", 4096))
+	other := writeFile(t, dir, "Onley copy.exe", strings.Repeat("a", 4096))
+	setMtime(t, self, 100)
+	setMtime(t, other, 200)
+	store := newStore(t)
+	scanInto(t, store, dir)
+
+	app := startAppWithSelf(t, store, dir, nil, self)
+	if !app.Exists("text:Running") {
+		t.Fatalf("running badge missing\n%s", app.Dump())
+	}
+	if !app.Find("id:keep:" + other).Props.Disabled {
+		t.Errorf("other copy is selectable in a group with the running executable")
+	}
+	if app.Find("id:keep:" + self).Props.Disabled {
+		t.Errorf("running executable is not selectable")
+	}
+	app.Screenshot("running-executable")
+
+	app.Press("id:auto-keep")
+	if !app.Find("id:keep:" + self).Props.Selected {
+		t.Fatalf("running executable was not kept\n%s", app.Dump())
+	}
+	if !app.Exists("text:Delete 1 file and free 4.0 KB?") {
+		t.Fatalf("confirmation missing\n%s", app.Dump())
+	}
+	app.Press("id:delete-confirm")
+	app.WaitFor("text:Deleted 1 file, freed 4.0 KB.", 10*time.Second)
+	if _, err := os.Stat(self); err != nil {
+		t.Errorf("running executable is gone: %v", err)
+	}
+	if _, err := os.Stat(other); !os.IsNotExist(err) {
+		t.Errorf("other copy still exists: %v", err)
 	}
 }
 

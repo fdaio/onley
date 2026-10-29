@@ -103,7 +103,9 @@ or custom `-db` support; use the CLI for those. It takes a typed path or a
 dropped folder; there is no native folder picker yet. A scan or delete uses
 the default index only, and deletion is permanent. The app verifies each
 file's size and modification time before deleting it; an index from an older
-onley needs one rescan to record mtimes.
+onley needs one rescan to record mtimes. The client never deletes its own
+running executable. If Onley is in a duplicate group, it must stay as the copy
+to keep; Windows locks the running executable.
 The app is unsigned, so Gatekeeper may require opening it from the Finder
 context menu the first time. Third-party notices are in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
