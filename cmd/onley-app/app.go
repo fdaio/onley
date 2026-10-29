@@ -8,6 +8,7 @@ import (
 	"github.com/oneo-me/nsgo/base"
 	"github.com/oneo-me/nsgo/core"
 	"github.com/oneo-me/nsgo/desktop"
+	"github.com/oneo-me/nsgo/icons/lucide"
 
 	"onley/internal/appmodel"
 	"onley/internal/db"
@@ -158,9 +159,8 @@ func (s *state) statCard(cx *core.Scope, title, testID string, value func() stri
 	c := colorsOf(cx)
 	return core.View{
 		Style: core.Style{
-			FlexGrow: 1, MinWidth: core.Pt(0), Background: c.background,
-			BorderWidth: 1, BorderColor: c.border, CornerRadius: 8,
-			Padding: core.All(10), Gap: 2,
+			FlexGrow: 1, MinWidth: core.Pt(0),
+			Padding: core.Symmetric(4, 0), Gap: 2,
 		},
 		Children: []core.Node{
 			core.Text{ContentFunc: value, TestID: testID, Style: core.Style{FontSize: 20, FontWeight: core.FontWeightBold, Color: c.text}},
@@ -223,8 +223,7 @@ func (s *state) scanCard(cx *core.Scope) core.Node {
 			func(cx *core.Scope, root func() string, _ func() int) core.Node {
 				return core.View{Style: core.Style{
 					Direction: core.Row, AlignItems: core.AlignCenter, Gap: 6,
-					Background: c.background, BorderWidth: 1, BorderColor: c.border,
-					CornerRadius: 8, Padding: core.Symmetric(4, 8),
+					Padding: core.Symmetric(6, 4),
 				}, Children: []core.Node{
 					core.View{Style: core.Style{FlexGrow: 1, FlexShrink: 1, MinWidth: core.Pt(0)}, Children: []core.Node{
 						core.Text{ContentFunc: func() string { return displayPath(root(), s.home) }, MaxLines: 1,
@@ -236,7 +235,7 @@ func (s *state) scanCard(cx *core.Scope) core.Node {
 				}}
 			},
 		),
-		line(s.t(i18n.KeyMergeHint), 10, core.FontWeightNormal, c.muted),
+		line(s.t(i18n.KeyMergeHint), 11, core.FontWeightNormal, c.muted),
 		core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 8}, Children: []core.Node{
 			core.Text{ContentFunc: func() string {
 				return i18n.FolderCount(s.lang.Get(), len(s.scanDirs.Get()))
@@ -320,7 +319,7 @@ func (s *state) indexCard(cx *core.Scope) core.Node {
 	return core.View{Style: core.Style{Gap: 2, Padding: core.Edges{Left: 4, Right: 4}}, Children: []core.Node{
 		line(s.t(i18n.KeyIndexFile), 11, core.FontWeightMedium, c.muted),
 		core.Text{Content: path, MaxLines: 1, Selectable: core.SelectableOn,
-			Style: core.Style{FontSize: 10, Color: c.muted}},
+			Style: core.Style{FontSize: 11, Color: c.muted}},
 	}}
 }
 
@@ -391,7 +390,10 @@ func (s *state) emptyState(cx *core.Scope) core.Node {
 			core.View{Style: core.Style{
 				Width: core.Pt(44), Height: core.Pt(44), CornerRadius: 22,
 				Background: c.accentSoft, AlignItems: core.AlignCenter, JustifyContent: core.JustifyCenter,
-			}, Children: []core.Node{line("✓", 20, core.FontWeightSemibold, c.accent)}},
+			}, Children: []core.Node{core.Icon{
+				SVG:   lucide.Check(),
+				Style: core.Style{Width: core.Pt(22), Height: core.Pt(22), Color: c.accent},
+			}}},
 			core.Text{Content: title, Style: core.Style{FontSize: 16, FontWeight: core.FontWeightSemibold, Color: c.text}},
 			core.Text{Content: body, Style: core.Style{FontSize: 12, Color: c.muted}},
 			core.Show{When: func() bool { return available }, Then: func(cx *core.Scope) core.Node {
@@ -433,7 +435,7 @@ func (s *state) actionBar(cx *core.Scope) core.Node {
 				line(s.t(i18n.KeyKeepPolicy), 11, core.FontWeightMedium, c.muted),
 				s.policyButton(cx, s.t(i18n.KeyNewest), "policy-newest", appmodel.KeepNewest),
 				s.policyButton(cx, s.t(i18n.KeyOldest), "policy-oldest", appmodel.KeepOldest),
-				line(s.t(i18n.KeyPolicyHint), 9, core.FontWeightNormal, c.muted),
+				line(s.t(i18n.KeyPolicyHint), 11, core.FontWeightNormal, c.muted),
 				spacer(),
 				appButton(cx, s.t(i18n.KeyKeepOne), "auto-keep", buttonSecondary, func() bool {
 					return s.scanning.Get() || s.busy.Get() || len(s.groups.Get()) == 0
