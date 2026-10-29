@@ -294,7 +294,10 @@ func (s *state) scanningPanel(cx *core.Scope) core.Node {
 		linef(func() string {
 			return s.tf(i18n.KeyElapsed, formatDuration(s.progress.Get().Elapsed))
 		}, 11, core.FontWeightNormal, c.muted),
-		appButton(cx, s.t(i18n.KeyCancelScan), "cancel-scan", buttonSecondary, nil, s.cancelScan),
+		core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 10}, Children: []core.Node{
+			appButton(cx, s.t(i18n.KeyCancelScan), "cancel-scan", buttonSecondary, nil, s.cancelScan),
+			line(s.t(i18n.KeyCancelScanHint), 11, core.FontWeightNormal, c.muted),
+		}},
 	}}
 }
 
