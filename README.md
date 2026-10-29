@@ -79,9 +79,9 @@ Build and open it on macOS:
 ```sh
 make app
 # Apple silicon
-open cmd/onley-app/dist/Onley-0.2.3-macos_arm64/Onley.app
+open cmd/onley-app/dist/Onley-0.2.4-macos_arm64/Onley.app
 # Intel
-open cmd/onley-app/dist/Onley-0.2.3-macos_x64/Onley.app
+open cmd/onley-app/dist/Onley-0.2.4-macos_x64/Onley.app
 ```
 
 Building the app needs Go 1.27.3 and Xcode; NSGo is pinned in `go.mod`.
