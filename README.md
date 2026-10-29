@@ -74,8 +74,8 @@ symlink aliases are not resolved. A one-click keep policy selects the newest or
 oldest file in every group, compares modification times, and opens the deletion
 review; it never deletes without confirmation. It uses the same
 `~/.onley/local.db` index as the CLI. The macOS app is signed with a Developer
-ID and notarized. Windows and Linux packages remain unsigned; see the note
-below before opening one.
+ID and notarized. Windows code signing is in progress; Linux packages remain
+unsigned; see the note below before opening one.
 
 Build and open it on macOS:
 
@@ -113,7 +113,8 @@ menu bar hides until Alt; the system draws it, so it does not use the app
 palette. On macOS the menu bar follows the system appearance; use Dark Mode to
 match the Midnight Terminal window.
 The macOS app is signed with a Developer ID and notarized, so Gatekeeper opens
-it normally. Windows and Linux packages are unsigned. Third-party notices are in
+it normally. Windows code signing is in progress; Linux packages are unsigned.
+Third-party notices are in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 Headless tests run with the rest of the repository. Native macOS UI tests need

@@ -69,7 +69,7 @@ NSGo 桌面客户端覆盖日常清理闭环：扫描文件夹、查看重复组
 绝对路径判断，不解析符号链接别名。操作栏的保留策略可一键选择“最新”或“最旧”，
 按修改时间比较后保留每组一个并打开删除确认，不会绕过确认直接删除。
 它和 CLI 共用 `~/.onley/local.db` 索引。macOS 桌面包使用 Developer ID 签名并已
-公证；Windows 与 Linux 包仍未签名，打开前请阅读下方说明。
+公证；Windows 代码签名正在申请中，Linux 包仍未签名，打开前请阅读下方说明。
 
 macOS 构建并打开：
 
@@ -99,7 +99,7 @@ NSGo 仍处于 early 阶段、没有稳定 API，升级应作为独立任务。
 Windows 与 Linux 的原生菜单栏默认隐藏，按 Alt 显示；它由系统绘制，不跟随应用
 配色。macOS 的顶部菜单栏跟随系统外观，切换深色模式后与 Midnight Terminal
 窗口一致。macOS 应用已签名并公证，首次打开不再需要右键选择“打开”；Windows
-与 Linux 包仍未签名。第三方声明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+代码签名正在申请中，Linux 包仍未签名。第三方声明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
 无头测试随仓库测试一起跑；macOS 原生 UI 测试需要 Xcode：
 
