@@ -11,6 +11,7 @@ import (
 	"onley/internal/db"
 	"onley/internal/format"
 	"onley/internal/i18n"
+	"onley/internal/selfpath"
 )
 
 type colors struct {
@@ -246,6 +247,9 @@ func (s *state) groupRow(cx *core.Scope, row core.ListRow) core.Node {
 				if !ok || s.keep.Get()[group.MD5] != "" {
 					return ""
 				}
+				if _, found := appmodel.ProtectedFile(group, s.selfPath); found {
+					return s.t(i18n.KeySelfKeepHint)
+				}
 				return s.t(i18n.KeyKeepHint)
 			}, 12, core.FontWeightNormal, c.muted),
 		},
@@ -254,13 +258,28 @@ func (s *state) groupRow(cx *core.Scope, row core.ListRow) core.Node {
 
 func (s *state) fileRow(cx *core.Scope, groupAt func() (db.DuplicateGroup, bool), file func() db.FileRecord) core.Node {
 	c := colorsOf(cx)
+	groupSelf := func() (db.FileRecord, bool) {
+		group, ok := groupAt()
+		if !ok {
+			return db.FileRecord{}, false
+		}
+		return appmodel.ProtectedFile(group, s.selfPath)
+	}
+	isSelf := func() bool {
+		self, ok := groupSelf()
+		return ok && selfpath.Same(file().Path, self.Path)
+	}
+	groupHasSelf := func() bool {
+		_, ok := groupSelf()
+		return ok
+	}
 	checked := func() bool {
 		group, ok := groupAt()
 		return ok && s.keep.Get()[group.MD5] == file().Path
 	}
 	onChange := func(bool) {
 		group, ok := groupAt()
-		if ok {
+		if ok && (!groupHasSelf() || isSelf()) {
 			s.setKeep(group.MD5, file().Path)
 		}
 	}
@@ -282,15 +301,20 @@ func (s *state) fileRow(cx *core.Scope, groupAt func() (db.DuplicateGroup, bool)
 			style.Background = c.accentSoft
 			style.BorderColor = c.accent.Faded(0.45)
 		}
+		if groupHasSelf() && !isSelf() {
+			style.Opacity = core.Alpha(0.55)
+		}
 		if s.busy.Get() || s.scanning.Get() {
 			style.Opacity = core.Alpha(0.6)
 		}
 		return style
 	}
 	return base.Radio{
-		Checked:   checked,
-		OnChange:  onChange,
-		Disabled:  func() bool { return s.busy.Get() || s.scanning.Get() },
+		Checked:  checked,
+		OnChange: onChange,
+		Disabled: func() bool {
+			return s.busy.Get() || s.scanning.Get() || (groupHasSelf() && !isSelf())
+		},
 		Label:     file().Name,
 		TestID:    "keep:" + file().Path,
 		StyleFunc: rowStyle,
@@ -305,6 +329,9 @@ func (s *state) fileRow(cx *core.Scope, groupAt func() (db.DuplicateGroup, bool)
 				},
 			}},
 			linef(func() string { return format.Bytes(file().Size) }, 11, core.FontWeightNormal, c.muted),
+			core.Show{When: isSelf, Then: func(*core.Scope) core.Node {
+				return badge(c, s.t(i18n.KeyRunning), c.success.Faded(0.16), c.success)
+			}},
 			core.Show{When: checked, Then: func(*core.Scope) core.Node {
 				return badge(c, s.t(i18n.KeyKeepBadge), c.accent, c.accentText)
 			}},

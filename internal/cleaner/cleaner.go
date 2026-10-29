@@ -7,7 +7,11 @@ import (
 	"os"
 
 	"onley/internal/db"
+	"onley/internal/selfpath"
 )
+
+// ErrSelfDelete reports an attempt to delete the running executable.
+var ErrSelfDelete = errors.New("cannot delete the running executable")
 
 // Target is one file to delete. Size and Mtime are the values the index holds;
 // they are checked when Delete is asked to verify the file.
@@ -57,9 +61,20 @@ func Verify(target Target) error {
 // and drops the record of a file that is already gone. A failure on one target
 // does not stop the others.
 func Delete(store *db.DB, targets []Target, verify bool) []Result {
+	return deleteWithProtect(store, targets, verify, selfpath.Resolve())
+}
+
+// deleteWithProtect is Delete with an explicit executable path to protect.
+func deleteWithProtect(store *db.DB, targets []Target, verify bool, protect string) []Result {
 	results := make([]Result, 0, len(targets))
 	for _, target := range targets {
 		r := Result{Path: target.Path}
+
+		if selfpath.Same(target.Path, protect) {
+			r.Err = ErrSelfDelete
+			results = append(results, r)
+			continue
+		}
 
 		if verify {
 			if err := Verify(target); err != nil {
