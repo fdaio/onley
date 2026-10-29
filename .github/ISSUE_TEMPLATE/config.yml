@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security policy
+    url: https://github.com/fdaio/onley/security/policy
+    about: Report security vulnerabilities privately. Do not open a public issue.
+  - name: Contributing guidelines
+    url: https://github.com/fdaio/onley/blob/master/CONTRIBUTING.md
+    about: Read the development setup and pull request expectations.
+  - name: Code of conduct
+    url: https://github.com/fdaio/onley/blob/master/CODE_OF_CONDUCT.md
+    about: Report unacceptable behavior to hello@getfda.dev.

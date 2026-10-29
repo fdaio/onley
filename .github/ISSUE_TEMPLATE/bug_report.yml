@@ -1,0 +1,101 @@
+name: Bug report
+description: Report a problem with onley.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Do not include secrets, tokens, or private file contents.
+        For security issues, follow the [security policy](https://github.com/fdaio/onley/security/policy)
+        instead of opening a public issue.
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before you start
+      options:
+        - label: I searched existing issues and did not find a duplicate.
+          required: true
+        - label: I removed secrets, tokens, and private data from this report.
+          required: true
+        - label: This is not a security report.
+          required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the problem.
+      placeholder: Tell us what you saw.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+      description: A clear description of what you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The smallest sequence that shows the problem.
+      placeholder: |
+        1. Run ...
+        2. ...
+        3. See ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: onley version
+      description: The release tag or commit SHA.
+      placeholder: v0.2.7
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Linux
+        - Windows
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: arch
+    attributes:
+      label: Architecture
+      placeholder: arm64 or amd64
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install onley?
+      options:
+        - Release archive
+        - Homebrew cask
+        - Built from source
+        - Desktop app
+        - Other
+    validations:
+      required: false
+  - type: textarea
+    id: output
+    attributes:
+      label: Relevant output
+      description: Paste commands, errors, or logs. Remove personal paths and secrets.
+      render: shell
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add screenshots, sample directory layouts, or anything else that helps.
+    validations:
+      required: false
