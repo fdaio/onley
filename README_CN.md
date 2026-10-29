@@ -66,17 +66,17 @@ NSGo 桌面客户端覆盖日常清理闭环：扫描文件夹、查看重复组
 文件夹，若某个文件夹位于另一个已选文件夹内，会先归并到父目录再扫描；归并按
 绝对路径判断，不解析符号链接别名。操作栏的保留策略可一键选择“最新”或“最旧”，
 按修改时间比较后保留每组一个并打开删除确认，不会绕过确认直接删除。
-它和 CLI 共用 `~/.onley/local.db` 索引。Release 中的桌面包未签名，打开前请阅读
-下方说明。
+它和 CLI 共用 `~/.onley/local.db` 索引。macOS 桌面包使用 Developer ID 签名并已
+公证；Windows 与 Linux 包仍未签名，打开前请阅读下方说明。
 
 macOS 构建并打开：
 
 ```sh
 make app
 # Apple silicon
-open cmd/onley-app/dist/Onley-0.2.6-macos_arm64/Onley.app
+open cmd/onley-app/dist/Onley-0.2.7-macos_arm64/Onley.app
 # Intel
-open cmd/onley-app/dist/Onley-0.2.6-macos_x64/Onley.app
+open cmd/onley-app/dist/Onley-0.2.7-macos_x64/Onley.app
 ```
 
 构建应用需要 Go 1.27.3 和 Xcode；NSGo 版本固定在 `go.mod`。
@@ -96,7 +96,8 @@ NSGo 仍处于 early 阶段、没有稳定 API，升级应作为独立任务。
 在重复组中，它只能作为保留副本，Windows 也会锁定运行中的 exe。
 Windows 与 Linux 的原生菜单栏默认隐藏，按 Alt 显示；它由系统绘制，不跟随应用
 配色。macOS 的顶部菜单栏跟随系统外观，切换深色模式后与 Midnight Terminal
-窗口一致。应用未签名，首次打开可能需要在 Finder 中右键选择“打开”。第三方声明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+窗口一致。macOS 应用已签名并公证，首次打开不再需要右键选择“打开”；Windows
+与 Linux 包仍未签名。第三方声明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
 无头测试随仓库测试一起跑；macOS 原生 UI 测试需要 Xcode：
 
