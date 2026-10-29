@@ -116,20 +116,113 @@ jobs:
         run: |
           go tool nsgo build -target macos_arm64,macos_x64,windows_x64,linux_x64 ./cmd/onley-app
           VERSION="${GITHUB_REF_NAME#v}"
-          DIST="cmd/onley-app/dist"
-          TAG="${GITHUB_REF_NAME}"
+          {
+            echo "version=$VERSION"
+            echo "tag=${GITHUB_REF_NAME}"
+            echo "dist=cmd/onley-app/dist"
+          } >> "$GITHUB_ENV"
+
+      - name: Validate Apple signing secrets
+        env:
+          APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          for name in APPLE_CERTIFICATE_P12 APPLE_CERTIFICATE_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing repository secret $name"
+              exit 1
+            fi
+          done
+
+      - name: Import Apple signing certificate
+        env:
+          APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+          echo "$APPLE_CERTIFICATE_P12" | base64 -D > "$RUNNER_TEMP/certificate.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$RUNNER_TEMP/certificate.p12" \
+            -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: \
+            -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH"
+          security default-keychain -d user -s "$KEYCHAIN_PATH"
+          rm -f "$RUNNER_TEMP/certificate.p12"
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+
+      - name: Sign and notarize macOS apps
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          IDENTITY=$(security find-identity -v -p codesigning "$RUNNER_TEMP/app-signing.keychain-db" \
+            | sed -n 's/.*"\(Developer ID Application:.*\)"/\1/p' | head -1 || true)
+          if [ -z "$IDENTITY" ]; then
+            echo "::error::Developer ID Application identity not found"
+            exit 1
+          fi
+          for arch in arm64 x64; do
+            APP="$dist/Onley-$version-macos_$arch/Onley.app"
+            if [ ! -d "$APP" ]; then
+              echo "::error::Missing $APP"
+              exit 1
+            fi
+            codesign --force --options runtime --timestamp --sign "$IDENTITY" "$APP"
+            codesign --verify --deep --strict --verbose=2 "$APP"
+
+            NOTARY_ZIP="$RUNNER_TEMP/Onley-$version-macos_$arch-notarize.zip"
+            ditto -c -k --keepParent "$APP" "$NOTARY_ZIP"
+            RESULT=$(xcrun notarytool submit "$NOTARY_ZIP" \
+              --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" \
+              --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+              --wait --output-format json)
+            STATUS=$(printf '%s' "$RESULT" | python3 -c 'import json, sys; print(json.load(sys.stdin)["status"])')
+            echo "notary status: $STATUS"
+            test "$STATUS" = "Accepted"
+            xcrun stapler staple "$APP"
+            xcrun stapler validate "$APP"
+            spctl -a -vvv -t exec "$APP"
+            rm -f "$NOTARY_ZIP"
+          done
+
+      - name: Package desktop packages
+        run: |
           ROOT="$PWD"
-
           ditto -c -k --sequesterRsrc --keepParent \
-            "$DIST/Onley-$VERSION-macos_arm64/Onley.app" \
-            "onley-desktop_${TAG}_macos_arm64.zip"
+            "$dist/Onley-$version-macos_arm64/Onley.app" \
+            "onley-desktop_${tag}_macos_arm64.zip"
           ditto -c -k --sequesterRsrc --keepParent \
-            "$DIST/Onley-$VERSION-macos_x64/Onley.app" \
-            "onley-desktop_${TAG}_macos_x64.zip"
-          (cd "$DIST/Onley-$VERSION-windows_x64" && zip -qry "$ROOT/onley-desktop_${TAG}_windows_x64.zip" .)
-          tar -C "$DIST/Onley-$VERSION-linux_x64" -czf "onley-desktop_${TAG}_linux_x64.tar.gz" .
+            "$dist/Onley-$version-macos_x64/Onley.app" \
+            "onley-desktop_${tag}_macos_x64.zip"
+          (cd "$dist/Onley-$version-windows_x64" && zip -qry "$ROOT/onley-desktop_${tag}_windows_x64.zip" .)
+          tar -C "$dist/Onley-$version-linux_x64" -czf "onley-desktop_${tag}_linux_x64.tar.gz" .
 
-          shasum -a 256 onley-desktop_${TAG}_*.zip onley-desktop_${TAG}_*.tar.gz > checksums-all.txt
+          shasum -a 256 onley-desktop_${tag}_*.zip onley-desktop_${tag}_*.tar.gz > checksums-all.txt
+
+      - name: Verify macOS release archives
+        run: |
+          set -euo pipefail
+          for arch in arm64 x64; do
+            DIR="$RUNNER_TEMP/verify-$arch"
+            rm -rf "$DIR"
+            mkdir -p "$DIR"
+            ditto -x -k "onley-desktop_${tag}_macos_${arch}.zip" "$DIR"
+            spctl -a -vvv -t exec "$DIR/Onley.app"
+          done
+
+      - name: Remove signing keychain
+        if: always()
+        run: security delete-keychain "$RUNNER_TEMP/app-signing.keychain-db" 2>/dev/null || true
 
       - name: Upload desktop archives
         uses: actions/upload-artifact@v7
