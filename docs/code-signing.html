@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Code signing policy — Onley</title>
+  <meta name="description" content="Onley code signing policy: SignPath Foundation for Windows, Developer ID and notarization for macOS.">
+  <link rel="icon" href="assets/logo.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="./" aria-label="Onley home">
+      <img src="assets/logo.png" alt="" width="36" height="36">
+      <span>Onley</span>
+    </a>
+    <nav aria-label="Main">
+      <a href="index.html#features">Features</a>
+      <a href="download.html">Download</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="https://github.com/fdaio/onley">GitHub</a>
+    </nav>
+  </header>
+
+  <main class="page">
+    <a class="back" href="./">← Back to Onley</a>
+    <p class="eyebrow">Code signing policy</p>
+    <h1>Signed builds, verified sources.</h1>
+    <p>
+      Free code signing provided by <a href="https://about.signpath.io">SignPath.io</a>,
+      certificate by <a href="https://signpath.org">SignPath Foundation</a>.
+    </p>
+
+    <h2>Scope</h2>
+    <p>This policy covers the Windows executables built from this repository:</p>
+    <ul>
+      <li><code>onley.exe</code>, the command-line client</li>
+      <li><code>Onley.exe</code>, the desktop client</li>
+    </ul>
+    <p>
+      The macOS desktop app is signed with an Apple Developer ID and notarized.
+      This policy covers the Windows signing request.
+    </p>
+
+    <h2>Build and provenance</h2>
+    <ul>
+      <li>Source: <a href="https://github.com/fdaio/onley">github.com/fdaio/onley</a></li>
+      <li>License: MIT</li>
+      <li>Builds: GitHub Actions, <code>.github/workflows/release.yml</code>, tag <code>v*</code></li>
+      <li>Only artifacts built from the tagged commit in that workflow are signed. Local builds are not signed.</li>
+      <li>The build sets the product name and version metadata; every artifact in a release uses the same version.</li>
+    </ul>
+
+    <h2>Roles</h2>
+    <ul>
+      <li>Committers and reviewers: <a href="https://github.com/fdaio/onley/graphs/contributors">repository contributors</a>, including <a href="https://github.com/Laotree">@Laotree</a>.</li>
+      <li>Approvers: <a href="https://github.com/Laotree">@Laotree</a>, repository owner.</li>
+      <li>Every signing request needs manual approval by an approver after the release candidate passes CI.</li>
+    </ul>
+
+    <h2>Signing process</h2>
+    <ol>
+      <li>A <code>v*</code> tag starts the release workflow.</li>
+      <li>CI builds the Windows CLI and desktop packages.</li>
+      <li>The Windows executables are submitted to SignPath.io.</li>
+      <li>An approver reviews the signing request.</li>
+      <li>SignPath signs the executables, and the workflow packages the signed files.</li>
+      <li>The release publishes the signed assets and checksums.</li>
+    </ol>
+
+    <h2>Privacy</h2>
+    <p>
+      Onley runs locally. It has no telemetry and does not transfer information
+      to other systems unless the user runs <code>serve</code> or
+      <code>replica</code>, or otherwise requests a network operation. The
+      client reads the local index at <code>~/.onley/local.db</code> and the
+      folders the user selects. See the <a href="privacy.html">privacy policy</a>.
+    </p>
+
+    <h2>Contact</h2>
+    <p>
+      Open an issue at
+      <a href="https://github.com/fdaio/onley/issues">github.com/fdaio/onley/issues</a>.
+    </p>
+
+    <p class="updated">Last updated: October 29, 2026</p>
+  </main>
+
+  <footer class="site-footer">
+    <p>Onley · local duplicate cleanup</p>
+    <nav aria-label="Footer">
+      <a href="https://github.com/fdaio/onley">GitHub</a>
+      <a href="download.html">Download</a>
+      <a href="https://github.com/fdaio/onley/releases">Releases</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="code-signing.html">Code signing policy</a>
+      <a href="https://github.com/fdaio/onley/blob/master/LICENSE">MIT License</a>
+    </nav>
+  </footer>
+</body>
+</html>
