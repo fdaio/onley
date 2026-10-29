@@ -49,27 +49,26 @@ type state struct {
 	defaultDir string
 	selfPath   string
 
-	groups      *core.Signal[[]db.DuplicateGroup]
-	total       *core.Signal[int]
-	summary     *core.Signal[appmodel.Summary]
-	scanDirs    *core.Signal[[]string]
-	scanPath    *core.Signal[string]
-	keep        *core.Signal[map[string]string]
-	keepPolicy  *core.Signal[appmodel.KeepPolicy]
-	scanning    *core.Signal[bool]
-	busy        *core.Signal[bool]
-	progress    *core.Signal[scanProgress]
-	message     *core.Signal[string]
-	note        *core.Signal[string]
-	noteSuccess *core.Signal[bool]
-	confirm     *core.Signal[bool]
-	dragging    *core.Signal[bool]
-	lang        *core.Signal[i18n.Lang]
-	speedMax    *core.Signal[float64]
-	needle      *core.AnimatedValue
-	pulse       *core.AnimatedValue
-	pulseRun    *core.AnimationRun
-	cancel      context.CancelFunc
+	groups       *core.Signal[[]db.DuplicateGroup]
+	summary      *core.Signal[appmodel.Summary]
+	scanDirs     *core.Signal[[]string]
+	scanPath     *core.Signal[string]
+	addingFolder *core.Signal[bool]
+	keep         *core.Signal[map[string]string]
+	keepPolicy   *core.Signal[appmodel.KeepPolicy]
+	scanning     *core.Signal[bool]
+	busy         *core.Signal[bool]
+	progress     *core.Signal[scanProgress]
+	message      *core.Signal[string]
+	note         *core.Signal[string]
+	noteSuccess  *core.Signal[bool]
+	confirm      *core.Signal[bool]
+	lang         *core.Signal[i18n.Lang]
+	speedMax     *core.Signal[float64]
+	needle       *core.AnimatedValue
+	pulse        *core.AnimatedValue
+	pulseRun     *core.AnimationRun
+	cancel       context.CancelFunc
 }
 
 func newState(cx *core.Scope, cfg Config) *state {
@@ -113,30 +112,29 @@ func newState(cx *core.Scope, cfg Config) *state {
 	}
 
 	s := &state{
-		cfg:         cfg,
-		cx:          cx,
-		home:        home,
-		defaultDir:  defaultDir,
-		selfPath:    selfPath,
-		groups:      core.NewSignalFunc(cx, []db.DuplicateGroup{}, nil),
-		total:       core.NewSignal(cx, 0),
-		summary:     core.NewSignal(cx, appmodel.Summary{}),
-		scanDirs:    core.NewSignalFunc(cx, []string{defaultDir}, nil),
-		scanPath:    core.NewSignal(cx, ""),
-		keep:        core.NewSignalFunc(cx, map[string]string{}, nil),
-		keepPolicy:  core.NewSignal(cx, policy),
-		scanning:    core.NewSignal(cx, false),
-		busy:        core.NewSignal(cx, false),
-		progress:    core.NewSignal(cx, scanProgress{}),
-		message:     core.NewSignal(cx, ""),
-		note:        core.NewSignal(cx, ""),
-		noteSuccess: core.NewSignal(cx, false),
-		confirm:     core.NewSignal(cx, false),
-		dragging:    core.NewSignal(cx, false),
-		lang:        core.NewSignal(cx, lang),
-		speedMax:    core.NewSignal(cx, 40.0),
-		needle:      core.NewAnimatedValue(cx, 0),
-		pulse:       core.NewAnimatedValue(cx, 0),
+		cfg:          cfg,
+		cx:           cx,
+		home:         home,
+		defaultDir:   defaultDir,
+		selfPath:     selfPath,
+		groups:       core.NewSignalFunc(cx, []db.DuplicateGroup{}, nil),
+		summary:      core.NewSignal(cx, appmodel.Summary{}),
+		scanDirs:     core.NewSignalFunc(cx, []string{defaultDir}, nil),
+		scanPath:     core.NewSignal(cx, ""),
+		addingFolder: core.NewSignal(cx, false),
+		keep:         core.NewSignalFunc(cx, map[string]string{}, nil),
+		keepPolicy:   core.NewSignal(cx, policy),
+		scanning:     core.NewSignal(cx, false),
+		busy:         core.NewSignal(cx, false),
+		progress:     core.NewSignal(cx, scanProgress{}),
+		message:      core.NewSignal(cx, ""),
+		note:         core.NewSignal(cx, ""),
+		noteSuccess:  core.NewSignal(cx, false),
+		confirm:      core.NewSignal(cx, false),
+		lang:         core.NewSignal(cx, lang),
+		speedMax:     core.NewSignal(cx, 40.0),
+		needle:       core.NewAnimatedValue(cx, 0),
+		pulse:        core.NewAnimatedValue(cx, 0),
 	}
 
 	switch {
@@ -145,11 +143,11 @@ func newState(cx *core.Scope, cfg Config) *state {
 	case cfg.Store == nil:
 		s.message.Set(s.t(i18n.KeyIndexUnavailable))
 	default:
-		groups, total, err := s.load()
+		groups, err := s.load()
 		if err != nil {
 			s.message.Set(s.tf(i18n.KeyCannotReadIndex, err))
 		} else {
-			s.apply(groups, total)
+			s.apply(groups)
 		}
 	}
 	return s
@@ -165,14 +163,6 @@ func (s *state) tf(key i18n.Key, args ...any) string {
 
 func (s *state) fileCount(n int) string {
 	return i18n.FileCount(s.lang.Get(), n)
-}
-
-func (s *state) duplicateFileCount(n int) string {
-	return i18n.DuplicateFileCount(s.lang.Get(), n)
-}
-
-func (s *state) groupCount(n int) string {
-	return i18n.GroupCount(s.lang.Get(), n)
 }
 
 func (s *state) copyCount(n int) string {
@@ -195,21 +185,12 @@ func (s *state) setNote(text string, success bool) {
 	s.noteSuccess.Set(success)
 }
 
-func (s *state) load() ([]db.DuplicateGroup, int, error) {
-	groups, err := s.cfg.Store.Duplicates()
-	if err != nil {
-		return nil, 0, err
-	}
-	total, _, err := s.cfg.Store.Stats()
-	if err != nil {
-		return nil, 0, err
-	}
-	return groups, total, nil
+func (s *state) load() ([]db.DuplicateGroup, error) {
+	return s.cfg.Store.Duplicates()
 }
 
-func (s *state) apply(groups []db.DuplicateGroup, total int) {
+func (s *state) apply(groups []db.DuplicateGroup) {
 	s.groups.Set(groups)
-	s.total.Set(total)
 	s.summary.Set(appmodel.Summarize(groups))
 	s.pruneKeep(groups)
 }
@@ -250,13 +231,13 @@ func (s *state) refreshAsync(after func()) {
 		return
 	}
 	go func() {
-		groups, total, err := s.load()
+		groups, err := s.load()
 		s.cx.Post(func() {
 			if err != nil {
 				s.message.Set(s.tf(i18n.KeyCannotReadIndex, err))
 				return
 			}
-			s.apply(groups, total)
+			s.apply(groups)
 			if after != nil {
 				after()
 			}
@@ -286,26 +267,16 @@ func (s *state) setKeep(md5, path string) {
 	s.keep.Set(next)
 }
 
-func (s *state) setKeepPolicy(policy appmodel.KeepPolicy) {
-	if s.keepPolicy.Get() == policy {
-		return
-	}
-	s.keepPolicy.Set(policy)
-	_ = s.cx.Storage().SetItem("keep_policy", policy.String())
-	s.keep.Set(map[string]string{})
-}
-
-func (s *state) clearKeep() {
-	s.keep.Set(map[string]string{})
-}
-
-// autoKeep selects one file per group using the current policy and opens the
-// deletion review. Nothing is deleted until the dialog is confirmed.
-func (s *state) autoKeep() {
+// applyKeepPolicy stores policy and selects the keep copy in every group.
+// Nothing is deleted until the review dialog is confirmed.
+func (s *state) applyKeepPolicy(policy appmodel.KeepPolicy) {
 	if s.scanning.Get() || s.busy.Get() {
 		return
 	}
-	policy := s.keepPolicy.Get()
+	if s.keepPolicy.Get() != policy {
+		s.keepPolicy.Set(policy)
+		_ = s.cx.Storage().SetItem("keep_policy", policy.String())
+	}
 	next := make(map[string]string)
 	for _, group := range s.groups.Get() {
 		if self, found := appmodel.ProtectedFile(group, s.selfPath); found {
@@ -317,7 +288,51 @@ func (s *state) autoKeep() {
 		}
 	}
 	s.keep.Set(next)
-	s.openConfirm()
+}
+
+func (s *state) duplicateGroupTitle() string {
+	n := s.summary.Get().Groups
+	if n == 1 {
+		return s.tf(i18n.KeyDuplicateGroupTitle, n)
+	}
+	return s.tf(i18n.KeyDuplicateGroupsTitle, n)
+}
+
+func (s *state) duplicateSummary() string {
+	summary := s.summary.Get()
+	return s.tf(i18n.KeyDuplicateSummary, s.fileCount(summary.DuplicateFiles), format.Bytes(summary.Wasted))
+}
+
+func (s *state) deleteLabel() string {
+	n := len(s.plan().Targets)
+	if n == 0 {
+		return s.t(i18n.KeyDelete)
+	}
+	return s.tf(i18n.KeyDeleteCount, s.fileCount(n))
+}
+
+func (s *state) openAddFolder() {
+	if s.scanning.Get() || s.busy.Get() {
+		return
+	}
+	s.scanPath.Set("")
+	s.message.Set("")
+	s.addingFolder.Set(true)
+}
+
+func (s *state) closeAddFolder() {
+	s.addingFolder.Set(false)
+	s.scanPath.Set("")
+	s.message.Set("")
+}
+
+func (s *state) confirmAddFolder() {
+	if strings.TrimSpace(s.scanPath.Get()) == "" {
+		return
+	}
+	if s.addFolder(s.scanPath.Get()) {
+		s.addingFolder.Set(false)
+	}
 }
 
 func (s *state) refresh() {
@@ -359,20 +374,6 @@ func (s *state) addFolder(raw string) bool {
 	s.scanPath.Set("")
 	s.message.Set("")
 	return true
-}
-
-func (s *state) removeFolder(path string) {
-	if s.scanning.Get() || s.busy.Get() {
-		return
-	}
-	roots := s.scanDirs.Get()
-	next := make([]string, 0, len(roots))
-	for _, root := range roots {
-		if root != path {
-			next = append(next, root)
-		}
-	}
-	s.scanDirs.Set(next)
 }
 
 func (s *state) scanRootsLabel() string {
@@ -636,31 +637,6 @@ func (s *state) confirmDelete() {
 			s.refreshAsync(nil)
 		})
 	}()
-}
-
-func (s *state) dropFiles(uris []string) {
-	s.dragging.Set(false)
-	if s.scanning.Get() || s.busy.Get() {
-		return
-	}
-	added := false
-	for _, uri := range uris {
-		path, ok := filePath(uri)
-		if !ok {
-			continue
-		}
-		if info, err := os.Stat(path); err != nil || !info.IsDir() {
-			continue
-		}
-		if s.addFolder(path) {
-			added = true
-		}
-	}
-	if !added {
-		s.message.Set(s.t(i18n.KeyDropFolderFirst))
-		return
-	}
-	s.startScan()
 }
 
 func (s *state) expand(path string) string {
