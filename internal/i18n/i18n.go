@@ -112,7 +112,13 @@ const (
 	KeyChooseCopyOrKeep   Key = "chooseCopyOrKeep"
 	KeySelection          Key = "selection"
 	KeyPermanentHint      Key = "permanentHint"
-	KeyKeepOnePerGroup    Key = "keepOnePerGroup"
+	KeyKeepPolicy         Key = "keepPolicy"
+	KeyNewest             Key = "newest"
+	KeyOldest             Key = "oldest"
+	KeyPolicyHint         Key = "policyHint"
+	KeyKeepNewestPerGroup Key = "keepNewestPerGroup"
+	KeyKeepOldestPerGroup Key = "keepOldestPerGroup"
+	KeyKeepOne            Key = "keepOne"
 	KeyReviewDelete       Key = "reviewDelete"
 	KeyConfirmDelete      Key = "confirmDelete"
 	KeyDeleteDuplicates   Key = "deleteDuplicates"
@@ -188,10 +194,16 @@ var messages = map[Lang]map[Key]string{
 		KeyScanningDots:       "Scanning…",
 		KeyScanningBody:       "Duplicate groups appear when the scan finishes.",
 		KeyScanDefaultFolder:  "Scan default folder",
-		KeyChooseCopyOrKeep:   "Choose a copy, or keep one per group.",
+		KeyChooseCopyOrKeep:   "Choose a copy, or use the keep policy.",
 		KeySelection:          "%s selected · %s reclaimable",
 		KeyPermanentHint:      "Permanent deletion. You will confirm the exact files first.",
-		KeyKeepOnePerGroup:    "Keep one per group",
+		KeyKeepPolicy:         "Keep policy",
+		KeyNewest:             "Newest",
+		KeyOldest:             "Oldest",
+		KeyPolicyHint:         "Uses modification time; ties use path.",
+		KeyKeepNewestPerGroup: "Keep newest per group",
+		KeyKeepOldestPerGroup: "Keep oldest per group",
+		KeyKeepOne:            "Keep one",
 		KeyReviewDelete:       "Review & delete",
 		KeyConfirmDelete:      "Confirm delete",
 		KeyDeleteDuplicates:   "Delete duplicates?",
@@ -265,10 +277,16 @@ var messages = map[Lang]map[Key]string{
 		KeyScanningDots:       "扫描中…",
 		KeyScanningBody:       "扫描完成后会显示重复组。",
 		KeyScanDefaultFolder:  "扫描默认文件夹",
-		KeyChooseCopyOrKeep:   "请选择要保留的副本，或使用“每组保留一个”。",
+		KeyChooseCopyOrKeep:   "请选择要保留的副本，或使用保留策略。",
 		KeySelection:          "已选择 %s · 可释放 %s",
 		KeyPermanentHint:      "永久删除。确认前会显示具体文件。",
-		KeyKeepOnePerGroup:    "每组保留一个",
+		KeyKeepPolicy:         "保留策略",
+		KeyNewest:             "最新",
+		KeyOldest:             "最旧",
+		KeyPolicyHint:         "按修改时间选择；时间相同按路径排序。",
+		KeyKeepNewestPerGroup: "每组保留最新一个",
+		KeyKeepOldestPerGroup: "每组保留最旧一个",
+		KeyKeepOne:            "保留一个",
 		KeyReviewDelete:       "检查并删除",
 		KeyConfirmDelete:      "确认删除",
 		KeyDeleteDuplicates:   "删除重复文件？",

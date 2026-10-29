@@ -309,12 +309,24 @@ func TestDeleteCleansRecordOfMissingFile(t *testing.T) {
 	}
 }
 
-func TestAutoKeepAcrossGroups(t *testing.T) {
+func setMtime(t *testing.T, path string, unix int64) {
+	t.Helper()
+	tm := time.Unix(unix, 0)
+	if err := os.Chtimes(path, tm, tm); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAutoKeepNewestAcrossGroups(t *testing.T) {
 	dir := t.TempDir()
-	firstA := writeFile(t, dir, "a1.bin", strings.Repeat("a", 4096))
-	secondA := writeFile(t, dir, "a2.bin", strings.Repeat("a", 4096))
-	firstB := writeFile(t, dir, "b1.bin", strings.Repeat("b", 4096))
-	secondB := writeFile(t, dir, "b2.bin", strings.Repeat("b", 4096))
+	oldA := writeFile(t, dir, "a1.bin", strings.Repeat("a", 4096))
+	newA := writeFile(t, dir, "a2.bin", strings.Repeat("a", 4096))
+	oldB := writeFile(t, dir, "b1.bin", strings.Repeat("b", 4096))
+	newB := writeFile(t, dir, "b2.bin", strings.Repeat("b", 4096))
+	setMtime(t, oldA, 100)
+	setMtime(t, oldB, 100)
+	setMtime(t, newA, 200)
+	setMtime(t, newB, 200)
 	store := newStore(t)
 	scanInto(t, store, dir)
 
@@ -329,18 +341,58 @@ func TestAutoKeepAcrossGroups(t *testing.T) {
 	app.Press("id:review-delete")
 	app.Press("id:delete-confirm")
 	app.WaitFor("text:Deleted 2 files, freed 8.0 KB.", 10*time.Second)
-	if _, err := os.Stat(firstA); err != nil {
-		t.Errorf("first file of group A is gone: %v", err)
+	if _, err := os.Stat(newA); err != nil {
+		t.Errorf("newest A is gone: %v", err)
 	}
-	if _, err := os.Stat(firstB); err != nil {
-		t.Errorf("first file of group B is gone: %v", err)
+	if _, err := os.Stat(newB); err != nil {
+		t.Errorf("newest B is gone: %v", err)
 	}
-	for _, path := range []string{secondA, secondB} {
+	for _, path := range []string{oldA, oldB} {
 		if _, err := os.Stat(path); !os.IsNotExist(err) {
-			t.Errorf("second copy %s still exists: %v", path, err)
+			t.Errorf("old copy %s still exists: %v", path, err)
 		}
 	}
 	app.WaitUntil(5*time.Second, func() bool { return app.Find("id:stat-groups").Text == "0 groups" })
+}
+
+func TestAutoKeepOldestAcrossGroups(t *testing.T) {
+	dir := t.TempDir()
+	oldA := writeFile(t, dir, "a1.bin", strings.Repeat("a", 4096))
+	newA := writeFile(t, dir, "a2.bin", strings.Repeat("a", 4096))
+	oldB := writeFile(t, dir, "b1.bin", strings.Repeat("b", 4096))
+	newB := writeFile(t, dir, "b2.bin", strings.Repeat("b", 4096))
+	setMtime(t, oldA, 100)
+	setMtime(t, oldB, 100)
+	setMtime(t, newA, 200)
+	setMtime(t, newB, 200)
+	store := newStore(t)
+	scanInto(t, store, dir)
+
+	app := startApp(t, store, dir, nil)
+	app.Press("id:keep:" + oldA)
+	app.WaitFor("text:1 file selected", 2*time.Second)
+	app.Press("id:policy-oldest")
+	app.WaitFor("text:Choose a copy, or use the keep policy.", 2*time.Second)
+	if got, ok := app.Storage().GetItem("keep_policy"); !ok || got != "oldest" {
+		t.Errorf("stored keep policy = %q, %v; want oldest", got, ok)
+	}
+	app.Press("id:auto-keep")
+	if !app.Exists("text:Delete 2 files and free 8.0 KB?") {
+		t.Fatalf("confirmation missing\n%s", app.Dump())
+	}
+	app.Press("id:delete-confirm")
+	app.WaitFor("text:Deleted 2 files, freed 8.0 KB.", 10*time.Second)
+	if _, err := os.Stat(oldA); err != nil {
+		t.Errorf("oldest A is gone: %v", err)
+	}
+	if _, err := os.Stat(oldB); err != nil {
+		t.Errorf("oldest B is gone: %v", err)
+	}
+	for _, path := range []string{newA, newB} {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Errorf("new copy %s still exists: %v", path, err)
+		}
+	}
 }
 
 func TestScanShowsSpeedGauge(t *testing.T) {

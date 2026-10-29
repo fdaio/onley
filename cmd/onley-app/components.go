@@ -7,6 +7,7 @@ import (
 	"github.com/oneo-me/nsgo/base"
 	"github.com/oneo-me/nsgo/core"
 
+	"onley/internal/appmodel"
 	"onley/internal/db"
 	"onley/internal/format"
 	"onley/internal/i18n"
@@ -111,6 +112,29 @@ func appButton(cx *core.Scope, label, testID string, kind buttonKind, disabled f
 			return core.Style{}
 		},
 		Children: []core.Node{line(label, 13, core.FontWeightSemibold, foreground)},
+	}
+}
+
+func (s *state) policyButton(cx *core.Scope, label, testID string, policy appmodel.KeepPolicy) core.Node {
+	c := colorsOf(cx)
+	selected := func() bool { return s.keepPolicy.Get() == policy }
+	return base.Button{
+		OnPress:  func(core.PressEvent) { s.setKeepPolicy(policy) },
+		Label:    label,
+		TestID:   testID,
+		Disabled: func() bool { return s.scanning.Get() || s.busy.Get() },
+		Style: core.Style{
+			Background: c.background, BorderWidth: 1, BorderColor: c.border,
+			CornerRadius: 7, Padding: core.Symmetric(6, 10),
+			AlignItems: core.AlignCenter, JustifyContent: core.JustifyCenter,
+		},
+		StyleFunc: func() core.Style {
+			if selected() {
+				return core.Style{Background: c.accentSoft, BorderColor: c.accent}
+			}
+			return core.Style{}
+		},
+		Children: []core.Node{line(label, 12, core.FontWeightMedium, c.text)},
 	}
 }
 
