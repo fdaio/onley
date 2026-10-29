@@ -6,6 +6,8 @@
 
 本地文件去重工具。通过 MD5 建立文件索引，找出重复文件，支持交互式清理——可在单台机器上使用，也可跨多台机器协同工作。
 
+网站：https://fdaio.github.io/onley/
+
 ## 功能特性
 
 - 基于 MD5 的全目录树重复文件检测
@@ -19,7 +21,7 @@
 
 ## 安装
 
-按平台下载 release 归档：
+按平台下载 release 归档，或使用[下载页面](https://fdaio.github.io/onley/download.html)：
 
 ```sh
 # macOS（Apple silicon）

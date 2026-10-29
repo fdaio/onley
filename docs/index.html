@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Onley — find and remove duplicate files</title>
+  <meta name="description" content="Onley is a local-only duplicate file finder for macOS, Windows and Linux. Scan folders, review duplicate groups, and delete the rest after confirmation.">
+  <meta property="og:title" content="Onley — find and remove duplicate files">
+  <meta property="og:description" content="A local-only duplicate file finder with a desktop client and CLI.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://fdaio.github.io/onley/assets/onley-main.png">
+  <link rel="icon" href="assets/logo.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <a class="brand" href="./" aria-label="Onley home">
+      <img src="assets/logo.png" alt="" width="36" height="36">
+      <span>Onley</span>
+    </a>
+    <nav aria-label="Main">
+      <a href="#features">Features</a>
+      <a href="download.html">Download</a>
+      <a href="code-signing.html">Signing</a>
+      <a href="https://github.com/fdaio/onley">GitHub</a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Local-only duplicate cleaner</p>
+        <h1>Find duplicates.<br>Keep the copy you want.</h1>
+        <p class="lede">
+          Onley scans your folders, shows every duplicate group, and deletes the
+          rest only after you confirm. It runs locally on macOS, Windows and
+          Linux, with a desktop client and a CLI.
+        </p>
+        <div class="actions">
+          <a class="button primary" href="download.html">Download Onley</a>
+          <a class="button secondary" href="https://github.com/fdaio/onley">View source</a>
+        </div>
+        <p class="fineprint">MIT licensed · No account · No telemetry</p>
+      </div>
+      <div class="hero-shot">
+        <img src="assets/onley-main.png" alt="Onley desktop app showing duplicate groups with keep and delete choices" width="1080" height="720">
+      </div>
+    </section>
+
+    <section id="features" class="section">
+      <div class="section-heading">
+        <p class="eyebrow">Why Onley</p>
+        <h2>Small tool. Clear decisions.</h2>
+      </div>
+      <div class="feature-grid">
+        <article class="card">
+          <h3>Local by default</h3>
+          <p>The index lives at <code>~/.onley/local.db</code>. Onley has no telemetry and no account.</p>
+        </article>
+        <article class="card">
+          <h3>Resume scans</h3>
+          <p>Cancel at any time. Finished files stay indexed, and the next scan skips unchanged files.</p>
+        </article>
+        <article class="card">
+          <h3>Newest or oldest</h3>
+          <p>Keep the newest or oldest copy in every group by modification time. Equal times fall back to path order.</p>
+        </article>
+        <article class="card">
+          <h3>Confirm before delete</h3>
+          <p>Review the exact files first. Onley checks size and modification time and skips files that changed since the scan.</p>
+        </article>
+        <article class="card">
+          <h3>Desktop and CLI</h3>
+          <p>Use the native client for review, or the CLI for <code>scan</code>, <code>dupes</code>, <code>clean</code>, <code>stats</code> and <code>watch</code>.</p>
+        </article>
+        <article class="card">
+          <h3>English and 中文</h3>
+          <p>The interface follows the system language and switches with one button. The choice is remembered.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section split">
+      <div>
+        <p class="eyebrow">How it works</p>
+        <h2>Three steps, one confirmation.</h2>
+      </div>
+      <ol class="steps">
+        <li><strong>Scan.</strong> Add one or more folders. The live gauge shows hashing speed.</li>
+        <li><strong>Review.</strong> Pick a copy to keep in every group, or apply the newest/oldest policy.</li>
+        <li><strong>Delete.</strong> Confirm the exact files. Onley verifies them before removing the rest.</li>
+      </ol>
+    </section>
+
+    <section id="install" class="section">
+      <div class="section-heading">
+        <p class="eyebrow">Install</p>
+        <h2>Get Onley</h2>
+      </div>
+      <div class="install-grid">
+        <div class="card">
+          <h3>macOS</h3>
+          <p>The app is signed with a Developer ID and notarized by Apple.</p>
+          <pre><code>brew tap laotree/tap
+brew install --cask onley</code></pre>
+          <p class="small"><a href="https://github.com/fdaio/onley/releases/latest">Direct download</a> · Apple silicon and Intel</p>
+        </div>
+        <div class="card">
+          <h3>Windows</h3>
+          <p>Download the desktop zip or the CLI from the latest release.</p>
+          <pre><code>onley-desktop_*_windows_x64.zip</code></pre>
+          <p class="small">Windows packages are not code signed yet.</p>
+        </div>
+        <div class="card">
+          <h3>Linux</h3>
+          <p>Download the desktop tarball or the CLI from the latest release.</p>
+          <pre><code>tar -xzf onley-desktop_*_linux_x64.tar.gz</code></pre>
+          <p class="small">Linux packages are not code signed yet.</p>
+        </div>
+      </div>
+      <p class="release-link">
+        Every release includes checksums and the CLI for macOS, Linux and Windows.
+        <a href="download.html">Choose your platform →</a> ·
+        <a href="https://github.com/fdaio/onley/releases/latest">Latest release</a>
+      </p>
+    </section>
+
+    <section id="signing" class="section status">
+      <div>
+        <p class="eyebrow">Code signing</p>
+        <h2>Signed where it matters.</h2>
+        <p>
+          The macOS app is signed with a Developer ID Application certificate and
+          notarized by Apple. The Windows and Linux packages are not code signed
+          yet; Windows signing is in progress.
+        </p>
+        <p><a href="code-signing.html">Read the code signing policy →</a></p>
+      </div>
+      <div class="status-badges" role="group" aria-label="Signing status">
+        <span class="badge good">macOS · signed + notarized</span>
+        <span class="badge">Windows · unsigned</span>
+        <span class="badge">Linux · unsigned</span>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Onley · local duplicate cleanup</p>
+    <nav aria-label="Footer">
+      <a href="https://github.com/fdaio/onley">GitHub</a>
+      <a href="download.html">Download</a>
+      <a href="https://github.com/fdaio/onley/releases">Releases</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="code-signing.html">Code signing policy</a>
+      <a href="https://github.com/fdaio/onley/blob/master/LICENSE">MIT License</a>
+    </nav>
+  </footer>
+</body>
+</html>

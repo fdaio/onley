@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Privacy — Onley</title>
+  <meta name="description" content="Onley privacy policy: local-only operation, no telemetry, and no data transfer unless the user requests it.">
+  <link rel="icon" href="assets/logo.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="./" aria-label="Onley home">
+      <img src="assets/logo.png" alt="" width="36" height="36">
+      <span>Onley</span>
+    </a>
+    <nav aria-label="Main">
+      <a href="index.html#features">Features</a>
+      <a href="download.html">Download</a>
+      <a href="code-signing.html">Code signing</a>
+      <a href="https://github.com/fdaio/onley">GitHub</a>
+    </nav>
+  </header>
+
+  <main class="page">
+    <a class="back" href="./">← Back to Onley</a>
+    <p class="eyebrow">Privacy</p>
+    <h1>Your files stay on your machine.</h1>
+    <p>
+      Onley is a local duplicate-file tool. It does not create an account, show
+      ads, or collect telemetry.
+    </p>
+
+    <h2>What Onley reads</h2>
+    <p>
+      Onley reads the folders you select and the local index at
+      <code>~/.onley/local.db</code>. It stores file paths, sizes, modification
+      times and MD5 hashes in that index so later scans can skip unchanged
+      files.
+    </p>
+
+    <h2>Network access</h2>
+    <p>
+      Onley does not contact a server during normal scanning or cleanup. It
+      uses the network only when you explicitly run a network feature such as
+      <code>serve</code> or <code>replica</code>, or when you choose to download
+      an update or open a link. The desktop client does not check for updates
+      automatically.
+    </p>
+
+    <h2>Deletion</h2>
+    <p>
+      Deletion is permanent and local. Onley shows the exact files and asks for
+      confirmation before removing them. Files changed since the scan are
+      skipped.
+    </p>
+
+    <h2>Third-party components</h2>
+    <p>
+      The desktop client is built with NSGo, licensed under Apache 2.0. See
+      <a href="https://github.com/fdaio/onley/blob/master/THIRD_PARTY_NOTICES.md">THIRD_PARTY_NOTICES.md</a>
+      for notices.
+    </p>
+
+    <h2>Contact</h2>
+    <p>
+      Questions or privacy concerns can be raised at
+      <a href="https://github.com/fdaio/onley/issues">github.com/fdaio/onley/issues</a>.
+    </p>
+
+    <p class="updated">Last updated: October 29, 2026</p>
+  </main>
+
+  <footer class="site-footer">
+    <p>Onley · local duplicate cleanup</p>
+    <nav aria-label="Footer">
+      <a href="https://github.com/fdaio/onley">GitHub</a>
+      <a href="download.html">Download</a>
+      <a href="https://github.com/fdaio/onley/releases">Releases</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="code-signing.html">Code signing policy</a>
+      <a href="https://github.com/fdaio/onley/blob/master/LICENSE">MIT License</a>
+    </nav>
+  </footer>
+</body>
+</html>

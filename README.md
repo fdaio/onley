@@ -6,6 +6,8 @@
 
 A local file deduplication tool. Indexes files by MD5, finds duplicates, and lets you clean them up interactively — on a single machine or across multiple machines.
 
+Website: https://fdaio.github.io/onley/
+
 ## Features
 
 - MD5-based duplicate detection across a directory tree
@@ -19,7 +21,7 @@ A local file deduplication tool. Indexes files by MD5, finds duplicates, and let
 
 ## Install
 
-Download a release archive for your platform:
+Download a release archive for your platform, or use the [download page](https://fdaio.github.io/onley/download.html):
 
 ```sh
 # macOS (Apple silicon)
