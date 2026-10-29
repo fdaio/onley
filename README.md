@@ -23,12 +23,15 @@ Website: https://fdaio.github.io/onley/
 
 Download a release archive for your platform, or use the [download page](https://fdaio.github.io/onley/download.html):
 
+`<version>` is the release number without the leading `v`, for example
+`0.2.8`.
+
 ```sh
 # macOS (Apple silicon)
-tar xzf onley_<version>_darwin_arm64.tar.gz
+tar xzf onley_v<version>_darwin_arm64.tar.gz
 
 # Linux (x86-64)
-tar xzf onley_<version>_linux_amd64.tar.gz
+tar xzf onley_v<version>_linux_amd64.tar.gz
 
 # macOS desktop preview (Apple silicon)
 unzip onley-desktop_v<version>_macos_arm64.zip
@@ -40,9 +43,9 @@ brew install --cask onley
 ```
 
 Archives are published for darwin and linux on amd64 and arm64, plus windows on
-amd64, each with a `checksums.txt` alongside. The desktop preview is also
+amd64. All release assets share one `checksums.txt`. The desktop preview is also
 published for macOS arm64/x64, Windows x64 and Linux x64. See
-[releases](https://github.com/Laotree/onley/releases).
+[releases](https://github.com/fdaio/onley/releases).
 
 `go install` does not work and is not offered: the module path is `onley`, which
 is not a resolvable repository location. Fixing that means changing the import
@@ -51,7 +54,7 @@ path of every package, so it has not been done.
 To build from source:
 
 ```sh
-git clone https://github.com/Laotree/onley
+git clone https://github.com/fdaio/onley
 cd onley
 make build      # produces ./onley
 ```
@@ -65,17 +68,18 @@ brew tap laotree/tap
 brew install --cask onley
 ```
 
-The NSGo desktop client covers the daily cleanup loop: scan a folder, review
-duplicate groups, choose one copy to keep per group, and delete the rest after
-one confirmation. Scanning shows a live MB/s gauge with a moving needle. The
-scan list accepts multiple folders, and a folder inside another selected folder
-is merged into its parent before scanning. Merging uses absolute paths, so
-symlink aliases are not resolved. A one-click keep policy selects the newest or
-oldest file in every group, compares modification times, and opens the deletion
-review; it never deletes without confirmation. It uses the same
-`~/.onley/local.db` index as the CLI. The macOS app is signed with a Developer
-ID and notarized. Windows code signing is in progress; Linux packages remain
-unsigned; see the note below before opening one.
+The NSGo desktop client covers the daily cleanup loop: scan one or more folders,
+review duplicate groups, choose one copy to keep per group, and delete the rest
+after one confirmation. Scanning shows a live MB/s gauge with a moving needle.
+The bottom bar holds the selected folders, and a folder inside another selected
+folder is merged into its parent before scanning. Merging uses absolute paths,
+so symlink aliases are not resolved. The header's keep policy selects the newest
+or oldest file in every group by modification time; the delete button then shows
+the resulting count and opens the confirmation. The policy never deletes
+without confirmation. It uses the same `~/.onley/local.db` index as the CLI.
+Release builds of the macOS app are signed with a Developer ID and notarized.
+Local `make app` builds are not signed. Windows code signing is in progress;
+Linux packages remain unsigned; see the note below before opening one.
 
 Build and open it on macOS:
 
@@ -96,14 +100,14 @@ run yet.
 
 The client shows the Midnight Terminal dark palette. It is available in English
 and Simplified Chinese. The first launch follows the system language; the
-EN/中文 button in the title bar switches it, and the choice is remembered.
+EN/中文 button in the top bar switches it, and the choice is remembered.
 UI strings live in `internal/i18n`; add a catalog there to support another
 language.
 
 The client is desktop-only. Mobile and web clients need an onley service API,
 which this preview does not add. The client has no `watch`, replica, `config`
-or custom `-db` support; use the CLI for those. It takes a typed path or a
-dropped folder; there is no native folder picker yet. A scan or delete uses
+or custom `-db` support; use the CLI for those. You add folders by typing a
+path; there is no native folder picker yet. A scan or delete uses
 the default index only, and deletion is permanent. The app verifies each
 file's size and modification time before deleting it; an index from an older
 onley needs one rescan to record mtimes. The client never deletes its own
@@ -112,8 +116,11 @@ to keep; Windows locks the running executable. On Windows and Linux the native
 menu bar hides until Alt; the system draws it, so it does not use the app
 palette. On macOS the menu bar follows the system appearance; use Dark Mode to
 match the Midnight Terminal window.
-The macOS app is signed with a Developer ID and notarized, so Gatekeeper opens
-it normally. Windows code signing is in progress; Linux packages are unsigned.
+Release builds of the macOS app are signed with a Developer ID and notarized,
+so Gatekeeper opens them normally. Local `make app` builds are not signed.
+Windows code signing is in progress; Linux packages are unsigned.
+On Windows, SmartScreen may warn, and Smart App Control can block an unsigned
+app. On Linux, verify the release checksum before opening the package.
 Third-party notices are in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
@@ -127,7 +134,9 @@ cd cmd/onley-app && go tool nsgo test -target macos
 
 ## Code signing policy
 
-Windows binaries are covered by the project's [code signing policy](CODE_SIGNING.md): free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+Windows code signing is in progress. Current Windows binaries are unsigned.
+The project's [code signing policy](CODE_SIGNING.md) describes the planned
+SignPath Foundation process and the artifacts it will cover.
 
 ## Quick start
 
@@ -214,7 +223,7 @@ onley watch -debounce 2s /Volumes/data
 | Flag | Default | Description |
 |---|---|---|
 | `-debounce <dur>` | `500ms` | How long a file must stop changing before it is indexed |
-| `-master <url>` | none | Push new files to this master; without it, only the index is maintained |
+| `-master <url>` | none unless configured | Push new files to this master; if unset, use `ONLEY_MASTER` or `~/.onley/config.json`. With no master anywhere, only the index is maintained |
 | `-interval <dur>` | `30s` | How often to push queued files |
 
 It covers the whole directory tree, the same way `scan` does, and it indexes the files that are already there on startup. New subdirectories are picked up as they appear.
@@ -227,7 +236,8 @@ Other commands can run against the same index while `watch` is running. Stop it 
 
 ### Pushing to a master
 
-Given a `-master`, `watch` also uploads what it indexes:
+Given a master from `-master`, `ONLEY_MASTER`, or `~/.onley/config.json`,
+`watch` also uploads what it indexes:
 
 ```sh
 onley watch -master http://master-host:8080 ~/Downloads
@@ -273,6 +283,10 @@ Keep number(s) (e.g. 1 or 1,2; Enter to skip): 1
 
 `clean-all` keeps the alphabetically first path in each group and deletes the rest after a single confirmation.
 
+`clean` and `clean-all` act on the index snapshot. They do not re-check size or
+modification time before deleting; run a fresh `scan` if files may have changed.
+The desktop client does check before it deletes.
+
 `-y` skips that confirmation, which is what makes `clean-all` runnable from cron with nothing on stdin:
 
 ```sh
@@ -286,6 +300,9 @@ Without `-y`, an exhausted stdin fails rather than quietly keeping every file: a
 ## Replica mode
 
 Replica mode lets multiple machines consolidate unique files onto one master.
+
+Replica mode has no authentication or TLS. Run `serve` only on a trusted
+network, or put it behind a reverse proxy, VPN, or firewall.
 
 **On the master machine**, start the HTTP server:
 
@@ -321,11 +338,12 @@ The first one that is set wins, so `-master ""` is the same as leaving it out.
 from, because a stale URL in the file is otherwise invisible and the failure
 looks like the master being down.
 
-`config set` refuses a URL with no scheme or no host, and refuses a key it does
-not know, so a typo is caught at the moment it is written instead of at the next
-replica run. A configuration file that cannot be parsed stops the command with
-an error naming the file: it is not treated as empty, because in replica mode
-the consequences of aiming at the wrong master are deletions.
+`config set` refuses a URL without an `http://` or `https://` scheme or without
+a host, and refuses a key it does not know, so a typo is caught at the moment it
+is written instead of at the next replica run. A configuration file that cannot
+be parsed stops the command with an error naming the file: it is not treated as
+empty, because in replica mode the consequences of aiming at the wrong master
+are deletions.
 
 `replica check` queries the master for every file in the local index and builds a plan:
 
@@ -379,7 +397,9 @@ Migrated files are uploaded via HTTP multipart and stored on the master in a con
 
 ## Master HTTP API
 
-The master exposes a small JSON API used internally by `replica check`. It can also be called directly.
+The master exposes a small JSON API used internally by `replica check`. It can
+also be called directly. The API has no authentication or TLS; see the
+deployment note above.
 
 | Method | Path | Description |
 |---|---|---|

@@ -1,6 +1,12 @@
 # Code signing policy
 
-Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+## Current status
+
+Windows code signing is in progress. The Windows CLI and desktop executables in
+the current releases are not code signed yet.
+
+Release builds of the macOS desktop app are signed with an Apple Developer ID
+and notarized. Linux packages are not code signed.
 
 ## Scope
 
@@ -9,23 +15,34 @@ This policy covers the Windows executables built from this repository:
 - `onley.exe`, the command-line client
 - `Onley.exe`, the desktop client
 
-The macOS desktop app is signed and notarized with an Apple Developer ID. This policy covers the Windows signing request.
+The macOS desktop app is covered by Apple Developer ID signing and
+notarization. This policy covers the planned Windows signing.
+
+## Signing provider
+
+The project is seeking free code signing from
+[SignPath.io](https://about.signpath.io), with a certificate from the
+[SignPath Foundation](https://signpath.org). This is not active yet.
 
 ## Build and provenance
 
 - Source: https://github.com/fdaio/onley
 - License: MIT
 - Builds: GitHub Actions, `.github/workflows/release.yml`, tag `v*`
-- Only artifacts built from the tagged commit in that workflow are signed. Local builds are not signed.
-- The build sets the product name and version metadata; every artifact in a release uses the same version.
+- Only artifacts built from the tagged commit in that workflow are eligible for
+  signing. Local builds are not signed.
+- The desktop build sets the product name and version from
+  `cmd/onley-app/nsgo.yaml`. Release assets use the tag as their version. The CLI
+  binary does not embed version metadata.
 
 ## Roles
 
 - Committers and reviewers: [repository contributors](https://github.com/fdaio/onley/graphs/contributors), including [@Laotree](https://github.com/Laotree).
 - Approvers: [@Laotree](https://github.com/Laotree), repository owner.
-- Every signing request needs manual approval by an approver after the release candidate passes CI.
+- After signing is active, every signing request needs manual approval by an
+  approver after the release candidate passes CI.
 
-## Signing process
+## Signing process after approval
 
 1. A `v*` tag starts the release workflow.
 2. CI builds the Windows CLI and desktop packages.
@@ -36,7 +53,10 @@ The macOS desktop app is signed and notarized with an Apple Developer ID. This p
 
 ## Privacy
 
-Onley runs locally. It has no telemetry and does not transfer information to other systems unless the user runs `serve` or `replica`, or otherwise requests a network operation. The client reads the local index at `~/.onley/local.db` and the folders the user selects. See the README for details.
+Onley runs locally. It has no telemetry and does not transfer information to
+other systems unless the user runs `serve` or `replica`, or otherwise requests a
+network operation. The client reads the local index at `~/.onley/local.db` and
+the folders the user selects. See the [privacy policy](https://fdaio.github.io/onley/privacy.html).
 
 ## Contact
 

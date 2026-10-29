@@ -35,9 +35,13 @@
     <h2>What Onley reads</h2>
     <p>
       Onley reads the folders you select and the local index at
-      <code>~/.onley/local.db</code>. It stores file paths, sizes, modification
-      times and MD5 hashes in that index so later scans can skip unchanged
-      files.
+      <code>~/.onley/local.db</code>. It stores file paths, names, sizes,
+      modification times and MD5 hashes in that index so later scans can skip
+      unchanged files.
+    </p>
+    <p>
+      When replica mode is configured, the master URL is stored in
+      <code>~/.onley/config.json</code>.
     </p>
 
     <h2>Network access</h2>
@@ -51,14 +55,18 @@
 
     <h2>Deletion</h2>
     <p>
-      Deletion is permanent and local. Onley shows the exact files and asks for
-      confirmation before removing them. Files changed since the scan are
-      skipped.
+      Deletion is permanent and local. The desktop client shows the exact files
+      and asks for confirmation; the CLI does the same unless you pass
+      <code>-y</code>. The desktop client checks size and modification time and
+      skips files that changed since the scan. The CLI acts on the index
+      snapshot; run a fresh scan before cleaning if files may have changed.
     </p>
 
     <h2>Third-party components</h2>
     <p>
-      The desktop client is built with NSGo, licensed under Apache 2.0. See
+      The desktop client is built with NSGo, licensed under Apache 2.0. The CLI
+      and desktop client also use the Go modules listed in <code>go.mod</code>.
+      See
       <a href="https://github.com/fdaio/onley/blob/master/THIRD_PARTY_NOTICES.md">THIRD_PARTY_NOTICES.md</a>
       for notices.
     </p>

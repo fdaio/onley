@@ -1,5 +1,11 @@
 # Third-party notices
 
+## Scope
+
+This file covers the dependencies and assets distributed with onley. The full
+module graph is in `go.mod` and `go.sum`; refer to each module's repository for
+its complete license text.
+
 ## NSGo
 
 The desktop client is built with NSGo, https://github.com/oneo-me/nsgo,
@@ -14,3 +20,14 @@ Longbridge.
 The NSGo source distribution carries the complete notices for its ported
 components and bundled assets. Keep them with any distributed build of the
 client.
+
+## Go modules
+
+The CLI and desktop client use these direct modules:
+
+- `github.com/fsnotify/fsnotify` — BSD-3-Clause
+- `github.com/mattn/go-isatty` — MIT
+- `modernc.org/sqlite` — BSD-3-Clause
+
+Indirect modules are pulled in by these direct dependencies; refer to their
+source distributions for notices.

@@ -23,12 +23,14 @@
 
 按平台下载 release 归档，或使用[下载页面](https://fdaio.github.io/onley/download.html)：
 
+`<版本号>` 是不带前导 `v` 的 release 编号，例如 `0.2.8`。
+
 ```sh
 # macOS（Apple silicon）
-tar xzf onley_<版本号>_darwin_arm64.tar.gz
+tar xzf onley_v<版本号>_darwin_arm64.tar.gz
 
 # Linux（x86-64）
-tar xzf onley_<版本号>_linux_amd64.tar.gz
+tar xzf onley_v<版本号>_linux_amd64.tar.gz
 
 # macOS 桌面客户端预览（Apple silicon）
 unzip onley-desktop_v<版本号>_macos_arm64.zip
@@ -39,9 +41,10 @@ brew tap laotree/tap
 brew install --cask onley
 ```
 
-发布范围为 darwin 与 linux 的 amd64 / arm64，以及 windows 的 amd64，
-每个归档旁边都有 `checksums.txt`。桌面客户端预览同时发布 macOS arm64/x64、
-Windows x64 与 Linux x64。见 [releases](https://github.com/Laotree/onley/releases)。
+发布范围为 darwin 与 linux 的 amd64 / arm64，以及 windows 的 amd64。
+所有 release 资产共用一个 `checksums.txt`。桌面客户端预览同时发布
+macOS arm64/x64、Windows x64 与 Linux x64。见
+[releases](https://github.com/fdaio/onley/releases)。
 
 `go install` 不可用，也没有提供：module 路径是 `onley`，不是一个可解析的仓库位置。
 要修就得改每个包的 import 路径，因此没有做。
@@ -49,7 +52,7 @@ Windows x64 与 Linux x64。见 [releases](https://github.com/Laotree/onley/rele
 从源码构建：
 
 ```sh
-git clone https://github.com/Laotree/onley
+git clone https://github.com/fdaio/onley
 cd onley
 make build      # 生成 ./onley
 ```
@@ -63,13 +66,14 @@ brew tap laotree/tap
 brew install --cask onley
 ```
 
-NSGo 桌面客户端覆盖日常清理闭环：扫描文件夹、查看重复组、每组选择一个保留副本、
-确认后删除其余副本。扫描时显示实时 MB/s 速度仪表与动态指针。扫描列表支持多个
-文件夹，若某个文件夹位于另一个已选文件夹内，会先归并到父目录再扫描；归并按
-绝对路径判断，不解析符号链接别名。操作栏的保留策略可一键选择“最新”或“最旧”，
-按修改时间比较后保留每组一个并打开删除确认，不会绕过确认直接删除。
-它和 CLI 共用 `~/.onley/local.db` 索引。macOS 桌面包使用 Developer ID 签名并已
-公证；Windows 代码签名正在申请中，Linux 包仍未签名，打开前请阅读下方说明。
+NSGo 桌面客户端覆盖日常清理闭环：扫描一个或多个文件夹、查看重复组、每组选择一个
+保留副本、确认后删除其余副本。扫描时显示实时 MB/s 速度仪表与动态指针。底部栏保留
+已选文件夹；若某个文件夹位于另一个已选文件夹内，会先归并到父目录再扫描；归并按绝对
+路径判断，不解析符号链接别名。顶部的保留策略可一键选择“最新”或“最旧”，按修改时间
+比较后为每组选好保留副本；底部删除按钮随后显示目标数量并打开确认框。该策略不会绕过
+确认直接删除。它和 CLI 共用 `~/.onley/local.db` 索引。macOS 发布包使用 Developer ID
+签名并已公证；本地 `make app` 构建未签名。Windows 代码签名正在申请中，Linux 包仍
+未签名，打开前请阅读下方说明。
 
 macOS 构建并打开：
 
@@ -84,22 +88,25 @@ open cmd/onley-app/dist/Onley-0.2.8-macos_x64/Onley.app
 构建应用需要 Go 1.27.3 和 Xcode；NSGo 版本固定在 `go.mod`。
 NSGo 仍处于 early 阶段、没有稳定 API，升级应作为独立任务。
 `make app` 构建当前 Mac 架构；`make app-all` 打包 macOS、Windows 和 Linux。
-本轮只验证 macOS 运行；Windows 与 Linux 已验证可构建、可打包，但尚未运行验证。
+本轮以 macOS 为运行验证目标；Windows 与 Linux 已验证可构建、可打包，但尚未运行验证。
 
 客户端使用 Midnight Terminal 暗色配色，只做桌面端。界面支持 English 与
-简体中文，首次启动跟随系统语言；标题栏的 EN/中文按钮可切换，选择会被记住。
+简体中文，首次启动跟随系统语言；顶部的 EN/中文按钮可切换，选择会被记住。
 文案位于 `internal/i18n`，新增语言目录即可扩展。
 
 手机与 Web 客户端需要 onley 提供本地服务 API，本预览不做。
 客户端不支持 `watch`、replica、`config` 和自定义 `-db`，这些继续用 CLI。
-扫描路径可以输入或拖入文件夹，暂未提供原生目录选择器。扫描与删除只操作默认
+扫描路径需要手动输入，暂未提供原生目录选择器。扫描与删除只操作默认
 索引，删除不可撤销。删除前会校验文件大小和修改时间；旧版本建立的索引需要
 重新扫描一次才能记录 mtime。Onley 不会删除正在运行的自身程序；如果自身出现
 在重复组中，它只能作为保留副本，Windows 也会锁定运行中的 exe。
 Windows 与 Linux 的原生菜单栏默认隐藏，按 Alt 显示；它由系统绘制，不跟随应用
 配色。macOS 的顶部菜单栏跟随系统外观，切换深色模式后与 Midnight Terminal
-窗口一致。macOS 应用已签名并公证，首次打开不再需要右键选择“打开”；Windows
-代码签名正在申请中，Linux 包仍未签名。第三方声明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+窗口一致。macOS 发布包已签名并公证，首次打开不再需要右键选择“打开”；本地
+`make app` 构建未签名。Windows 代码签名正在申请中，Linux 包仍未签名。
+Windows 上 SmartScreen 可能提示风险，Smart App Control 可能阻止未签名应用；
+Linux 包打开前请核对 release checksum。第三方声明见
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
 无头测试随仓库测试一起跑；macOS 原生 UI 测试需要 Xcode：
 
@@ -110,7 +117,8 @@ cd cmd/onley-app && go tool nsgo test -target macos
 
 ## 代码签名政策
 
-Windows 二进制按项目的[代码签名政策](CODE_SIGNING.md)签名：由 [SignPath.io](https://about.signpath.io) 提供免费代码签名，证书由 [SignPath Foundation](https://signpath.org) 提供。
+Windows 代码签名正在申请中，当前 Windows 二进制尚未签名。项目的[代码签名政策](CODE_SIGNING.md)
+说明了计划采用的 SignPath Foundation 流程及覆盖范围。
 
 ## 快速上手
 
@@ -193,7 +201,7 @@ onley watch -debounce 2s /Volumes/data
 | 参数 | 默认值 | 说明 |
 |---|---|---|
 | `-debounce <dur>` | `500ms` | 文件停止变化多久后才纳入索引 |
-| `-master <url>` | 无 | 把新文件推给这台 master；不配则只维护索引 |
+| `-master <url>` | 未配置时为无 | 把新文件推给这台 master；未指定时使用 `ONLEY_MASTER` 或 `~/.onley/config.json`。三处都没有时只维护索引 |
 | `-interval <dur>` | `30s` | 推送队列的间隔 |
 
 它和 `scan` 一样覆盖整棵目录树，并在启动时为已存在的文件建立索引；运行期间新建的子目录也会自动纳入。
@@ -206,7 +214,8 @@ onley watch -debounce 2s /Volumes/data
 
 ### 推送到 master
 
-给了 `-master` 之后，`watch` 会把收录到的文件也上传上去：
+给了 master（来自 `-master`、`ONLEY_MASTER` 或 `~/.onley/config.json`）之后，
+`watch` 会把收录到的文件也上传上去：
 
 ```sh
 onley watch -master http://master-host:8080 ~/Downloads
@@ -223,7 +232,7 @@ onley watch -master http://master-host:8080 ~/Downloads
 
 - 队列是上次推送以来收录到的内容。启动时那就是整棵已有的目录树，因为启动扫描
   会把它们都报一遍 —— 所以第一轮就是那次「补上之前漏掉的部分」的对账。
-- 内容相同的文件只问一次、只上传一次，不是每个文件各来一遍。
+- 内容相同的文件只查询一次、只上传一次，不是每个文件各来一遍。
 - master 已经有了的内容不会重复上传，也不会被删除。
 - 一轮失败后，下一轮的等待时间翻倍，上限是间隔的十六倍；成功一轮就恢复原值。
   挂了一个星期的 master 不会被每 30 秒戳一次。
@@ -245,6 +254,9 @@ Keep number(s) (e.g. 1 or 1,2; Enter to skip): 1
 
 `clean-all` 每组按路径字母顺序保留第一个文件，一次确认后删除其余文件。
 
+`clean` 与 `clean-all` 按索引快照执行，删除前不会重新校验文件大小或修改时间；
+如果文件可能已变化，请先重新 `scan`。桌面客户端会在删除前校验。
+
 `-y` 跳过这次确认，也就是让 `clean-all` 能在 cron 里 stdin 为空时无人值守地跑：
 
 ```sh
@@ -261,6 +273,9 @@ onley -y clean-all
 ## 多机模式（Replica）
 
 多机模式允许多台机器将各自的独有文件统一汇聚到一台 master 上。
+
+多机模式没有认证，也没有 TLS。只应在可信网络中运行 `serve`，或把它放在反向代理、
+VPN 或防火墙之后。
 
 **在 master 机器上**，启动 HTTP 服务：
 
@@ -294,9 +309,10 @@ onley replica check
 它最终用的 master 以及来自三者中的哪一个 —— 配置里存了过期 URL 时完全看不出来，失败
 表现会和「master 连不上」混在一起。
 
-`config set` 会拒绝缺 scheme、缺 host 的 URL，也会拒绝它不认识的键，这样打错字在写入
-的那一刻就被拦住，而不是等到下一次 replica 运行时才发现。配置文件无法解析时命令直接
-报错退出并指出文件路径，不会当成空配置 —— 在多机模式下，连错 master 的后果是删文件。
+`config set` 会拒绝不是 `http://` 或 `https://` 的 scheme、缺 host 的 URL，也会拒绝
+它不认识的键，这样打错字在写入的那一刻就被拦住，而不是等到下一次 replica 运行时
+才发现。配置文件无法解析时命令直接报错退出并指出文件路径，不会当成空配置 —— 在多机
+模式下，连错 master 的后果是删文件。
 
 `replica check` 对本地索引中的每个文件查询 master，生成操作计划：
 
@@ -349,6 +365,7 @@ Proceed with the above? [y/N]
 ## Master HTTP API
 
 master 对外暴露一组小型 JSON API，供 `replica check` 内部调用，也可直接访问。
+该 API 没有认证，也没有 TLS；见上方部署注意事项。
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
