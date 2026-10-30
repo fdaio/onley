@@ -99,14 +99,27 @@ func (c category) labelKey() i18n.Key {
 
 // categoryCounts counts duplicate groups per category.
 func (s *state) categoryCounts() map[category]int {
-	counts := map[category]int{categoryAll: len(s.groups.Get())}
+	counts := map[category]int{}
+	roots := s.scanDirs.Get()
 	for _, group := range s.groups.Get() {
-		if len(group.Files) == 0 {
+		if len(group.Files) == 0 || !groupInRoots(group, roots) {
 			continue
 		}
+		counts[categoryAll]++
 		counts[fileCategory(group.Files[0].Name)]++
 	}
 	return counts
+}
+
+func groupInRoots(group db.DuplicateGroup, roots []string) bool {
+	for _, file := range group.Files {
+		for _, root := range roots {
+			if file.Path == root || strings.HasPrefix(file.Path, root+string(filepath.Separator)) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func groupMatches(group db.DuplicateGroup, query string) bool {

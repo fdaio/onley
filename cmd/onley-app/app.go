@@ -42,6 +42,7 @@ func Root(cfg Config) func(*core.Scope) core.Node {
 			_ = s.keepPolicy.Get()
 			_ = s.keep.Get()
 			_ = s.groups.Get()
+			_ = s.scoped.Get()
 			_ = s.visible.Get()
 			_ = s.summary.Get()
 			_ = s.indexed.Get()
@@ -594,8 +595,8 @@ func (s *state) scanningPanel(cx *core.Scope) core.Node {
 	}, Children: []core.Node{
 		core.Text{Content: strings.ToUpper(s.t(i18n.KeyScanning)),
 			Style: core.Style{FontFamily: displayFont, FontSize: 34, Color: c.text}},
-		core.Text{Content: s.scanRootsLabel(), MaxLines: 1, Style: core.Style{FontFamily: monoFont,
-			FontSize: 9, Color: c.muted}},
+		core.Text{Content: s.scanRootsLabel(), MaxLines: 1, TestID: "scan-root",
+			Style: core.Style{FontFamily: monoFont, FontSize: 9, Color: c.muted}},
 		core.Canvas{
 			Style:  core.Style{Width: core.Pct(100), Height: core.Pt(280)},
 			Draw:   s.drawGauge(c),

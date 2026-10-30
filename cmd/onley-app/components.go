@@ -138,7 +138,7 @@ func (s *state) policySelected(policy appmodel.KeepPolicy) bool {
 	if s.keepPolicy.Get() != policy {
 		return false
 	}
-	groups := s.groups.Get()
+	groups := s.scoped.Get()
 	if len(groups) == 0 {
 		return false
 	}
