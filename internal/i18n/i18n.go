@@ -169,6 +169,12 @@ const (
 	KeyReviewDeleteN     Key = "reviewDeleteN"
 	KeySearchPlaceholder Key = "searchPlaceholder"
 	KeyLocalIndex        Key = "localIndex"
+
+	KeyPermissionDelete     Key = "permissionDelete"
+	KeyPermissionKeep       Key = "permissionKeep"
+	KeyPermissionReadErrors Key = "permissionReadErrors"
+	KeyPermissionFolder     Key = "permissionFolder"
+	KeyPermissionIndex      Key = "permissionIndex"
 )
 
 var messages = map[Lang]map[Key]string{
@@ -288,6 +294,11 @@ var messages = map[Lang]map[Key]string{
 		KeyReviewDeleteN:        "Review & delete (%s)",
 		KeySearchPlaceholder:    "Search by file name or path",
 		KeyLocalIndex:           "Local index",
+		KeyPermissionDelete:     "Cannot delete %s: permission denied. Check the file or folder permissions, then try again.",
+		KeyPermissionKeep:       "Cannot keep %s: permission denied. Check the file or folder permissions.",
+		KeyPermissionReadErrors: "%d file(s) could not be read because of permissions. Check folder access or grant Onley Full Disk Access.",
+		KeyPermissionFolder:     "Cannot read %s: permission denied. Check the folder permissions or grant Onley Full Disk Access.",
+		KeyPermissionIndex:      "Cannot open the index: permission denied. Check the permissions on ~/.onley.",
 	},
 	Chinese: {
 		KeySubtitle:             "查找并删除重复文件",
@@ -405,6 +416,11 @@ var messages = map[Lang]map[Key]string{
 		KeyReviewDeleteN:        "检查并删除（%s）",
 		KeySearchPlaceholder:    "按文件名或路径搜索",
 		KeyLocalIndex:           "本地索引",
+		KeyPermissionDelete:     "无法删除 %s：权限不足。请检查文件或文件夹权限后重试。",
+		KeyPermissionKeep:       "无法保留 %s：权限不足。请检查文件或文件夹权限。",
+		KeyPermissionReadErrors: "%d 个文件因权限不足无法读取。请检查文件夹权限，或授予 Onley 完全磁盘访问权限。",
+		KeyPermissionFolder:     "无法读取 %s：权限不足。请检查文件夹权限，或授予 Onley 完全磁盘访问权限。",
+		KeyPermissionIndex:      "无法打开索引：权限不足。请检查 ~/.onley 的权限。",
 	},
 }
 

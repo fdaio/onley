@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"maps"
 	"os"
 	"path/filepath"
@@ -33,13 +34,14 @@ type Config struct {
 }
 
 type scanProgress struct {
-	Done      int
-	Skipped   int
-	Errors    int
-	Hashed    int64
-	Speed     float64
-	Elapsed   time.Duration
-	LastError string
+	Done             int
+	Skipped          int
+	Errors           int
+	PermissionErrors int
+	Hashed           int64
+	Speed            float64
+	Elapsed          time.Duration
+	LastError        string
 }
 
 type state struct {
@@ -149,18 +151,32 @@ func newState(cx *core.Scope, cfg Config) *state {
 
 	switch {
 	case cfg.OpenErr != nil:
-		s.message.Set(s.tf(i18n.KeyCannotOpenIndex, cfg.OpenErr))
+		s.showIndexError(cfg.OpenErr, true)
 	case cfg.Store == nil:
 		s.message.Set(s.t(i18n.KeyIndexUnavailable))
 	default:
 		groups, total, err := s.load()
 		if err != nil {
-			s.message.Set(s.tf(i18n.KeyCannotReadIndex, err))
+			s.showIndexError(err, false)
 		} else {
 			s.apply(groups, total)
 		}
 	}
 	return s
+}
+
+// showIndexError tells the user when the index cannot be opened or read. A
+// permission failure gets its own hint, because the raw error is not useful.
+func (s *state) showIndexError(err error, opening bool) {
+	if isPermissionError(err) {
+		s.message.Set(s.t(i18n.KeyPermissionIndex))
+		return
+	}
+	if opening {
+		s.message.Set(s.tf(i18n.KeyCannotOpenIndex, err))
+		return
+	}
+	s.message.Set(s.tf(i18n.KeyCannotReadIndex, err))
 }
 
 func (s *state) t(key i18n.Key) string {
@@ -258,7 +274,7 @@ func (s *state) refreshAsync(after func()) {
 		groups, total, err := s.load()
 		s.cx.Post(func() {
 			if err != nil {
-				s.message.Set(s.tf(i18n.KeyCannotReadIndex, err))
+				s.showIndexError(err, false)
 				return
 			}
 			s.apply(groups, total)
@@ -364,7 +380,11 @@ func (s *state) addFolder(raw string) bool {
 	}
 	info, err := os.Stat(abs)
 	if err != nil {
-		s.message.Set(s.tf(i18n.KeyCannotScanFolder, err))
+		if isPermissionError(err) {
+			s.message.Set(s.tf(i18n.KeyPermissionFolder, abs))
+		} else {
+			s.message.Set(s.tf(i18n.KeyCannotScanFolder, err))
+		}
 		return false
 	}
 	if !info.IsDir() {
@@ -434,7 +454,11 @@ func (s *state) startScan() {
 	for _, root := range roots {
 		info, err := os.Stat(root)
 		if err != nil {
-			s.message.Set(s.tf(i18n.KeyCannotScanFolder, err))
+			if isPermissionError(err) {
+				s.message.Set(s.tf(i18n.KeyPermissionFolder, root))
+			} else {
+				s.message.Set(s.tf(i18n.KeyCannotScanFolder, err))
+			}
 			return
 		}
 		if !info.IsDir() {
@@ -509,6 +533,9 @@ func (s *state) runScan(ctx context.Context, roots []string) {
 			if ev.Err != nil {
 				p.Errors++
 				p.LastError = ev.Err.Error()
+				if isPermissionError(ev.Err) {
+					p.PermissionErrors++
+				}
 			} else if ev.Done {
 				done++
 				if ev.Skipped {
@@ -543,7 +570,13 @@ func (s *state) runScan(ctx context.Context, roots []string) {
 		} else {
 			s.setNote(s.tf(i18n.KeyScanFinished, p.Done, p.Skipped), false)
 		}
-		if p.Errors > 0 {
+		if p.PermissionErrors > 0 {
+			msg := s.tf(i18n.KeyPermissionReadErrors, p.PermissionErrors)
+			if other := p.Errors - p.PermissionErrors; other > 0 {
+				msg += " " + s.tf(i18n.KeyReadErrors, other)
+			}
+			s.message.Set(msg)
+		} else if p.Errors > 0 {
 			msg := s.tf(i18n.KeyReadErrors, p.Errors)
 			if p.LastError != "" {
 				msg += ": " + p.LastError
@@ -611,13 +644,24 @@ func (s *state) confirmDelete() {
 		keeps[i] = cleaner.Target{Path: file.Path, Size: file.Size, Mtime: file.Mtime}
 	}
 
+	// Resolve localized text before the worker starts: signals are not safe to
+	// read from the delete goroutine.
+	selfDeleteMsg := s.t(i18n.KeyCannotDeleteSelf)
+	permissionDeleteFmt := s.t(i18n.KeyPermissionDelete)
+	indexCleanupMsg := s.t(i18n.KeyIndexCleanupFailed)
+	permissionIndexMsg := s.t(i18n.KeyPermissionIndex)
+
 	go func() {
 		for _, keep := range keeps {
 			if err := cleaner.Verify(keep); err != nil {
 				s.cx.Post(func() {
 					s.busy.Set(false)
 					s.setNote(s.t(i18n.KeyDeleteCanceledKeep), false)
-					s.message.Set(s.tf(i18n.KeyCannotKeep, keep.Path, err))
+					if isPermissionError(err) {
+						s.message.Set(s.tf(i18n.KeyPermissionKeep, keep.Path))
+					} else {
+						s.message.Set(s.tf(i18n.KeyCannotKeep, keep.Path, err))
+					}
 					s.refreshAsync(nil)
 				})
 				return
@@ -638,9 +682,12 @@ func (s *state) confirmDelete() {
 			if result.Err != nil {
 				failed++
 				if firstErr == "" {
-					if errors.Is(result.Err, cleaner.ErrSelfDelete) {
-						firstErr = result.Path + ": " + s.t(i18n.KeyCannotDeleteSelf)
-					} else {
+					switch {
+					case errors.Is(result.Err, cleaner.ErrSelfDelete):
+						firstErr = result.Path + ": " + selfDeleteMsg
+					case isPermissionError(result.Err):
+						firstErr = fmt.Sprintf(permissionDeleteFmt, result.Path)
+					default:
 						firstErr = result.Path + ": " + result.Err.Error()
 					}
 				}
@@ -648,7 +695,11 @@ func (s *state) confirmDelete() {
 			if result.IndexErr != nil {
 				failed++
 				if firstErr == "" {
-					firstErr = result.Path + ": " + s.t(i18n.KeyIndexCleanupFailed) + ": " + result.IndexErr.Error()
+					if isPermissionError(result.IndexErr) {
+						firstErr = result.Path + ": " + permissionIndexMsg
+					} else {
+						firstErr = result.Path + ": " + indexCleanupMsg + ": " + result.IndexErr.Error()
+					}
 				}
 			}
 		}
