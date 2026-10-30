@@ -1,7 +1,7 @@
 name: Onley
 id: io.github.laotree.onley
-version: 0.2.9
-appearance: dark
+version: 0.2.10
+appearance: light
 
 window:
   width: 1080
