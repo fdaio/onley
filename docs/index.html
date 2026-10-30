@@ -5,158 +5,189 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>Onley — find and remove duplicate files</title>
-  <meta name="description" content="Onley is a local-only duplicate file finder for macOS, Windows and Linux. Scan folders, review duplicate groups, and delete the rest after confirmation.">
+  <meta name="description" content="Onley is a local-only duplicate file finder for macOS, Windows and Linux. Scan folders, review duplicate groups, and delete the rest only after you confirm.">
   <meta property="og:title" content="Onley — find and remove duplicate files">
   <meta property="og:description" content="A local-only duplicate file finder with a desktop client and CLI.">
   <meta property="og:type" content="website">
   <meta property="og:image" content="https://fdaio.github.io/onley/assets/onley-main.png">
-  <link rel="icon" href="assets/logo.png">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="assets/mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="home.css">
 </head>
-<body>
+<body class="home">
   <a class="skip-link" href="#main">Skip to content</a>
 
   <header class="site-header">
     <a class="brand" href="./" aria-label="Onley home">
-      <img src="assets/logo.png" alt="" width="36" height="36">
+      <img src="assets/mark.svg" alt="" width="32" height="32">
       <span>Onley</span>
     </a>
-    <nav aria-label="Main">
+    <nav class="site-nav" aria-label="Main">
       <a href="#features">Features</a>
-      <a href="download.html">Download</a>
-      <a href="code-signing.html">Signing</a>
-      <a href="https://github.com/fdaio/onley">GitHub</a>
+      <a href="https://github.com/fdaio/onley#readme">Documentation</a>
+      <a href="https://github.com/fdaio/onley/releases">Changelog</a>
+      <a href="coming-soon.html" data-placeholder="true" title="Pricing page coming soon">Pricing</a>
     </nav>
+    <div class="header-actions">
+      <a class="text-link" href="https://github.com/fdaio/onley">GitHub</a>
+      <a class="button button-light" href="download.html">Download App</a>
+    </div>
   </header>
 
   <main id="main">
     <section class="hero">
       <div class="hero-copy">
-        <p class="eyebrow">Local-only duplicate cleaner</p>
-        <h1>Find duplicates.<br>Keep the copy you want.</h1>
+        <p class="eyebrow-pill"><span class="dot" aria-hidden="true"></span>Local-only duplicate cleaner</p>
+        <h1>Find<br>duplicates.<br>Keep the copy<br>you actually<br>want.</h1>
         <p class="lede">
-          The desktop client scans your folders, shows every duplicate group,
-          and deletes the rest only after you confirm. A CLI is also available
-          for macOS, Linux and Windows.
+          Onley scans your local storage with byte-level precision. It finds
+          duplicate groups, compares file hashes, and reclaims wasted space. The
+          desktop app deletes only after you confirm, and normal scans stay on
+          your machine.
         </p>
-        <div class="actions">
-          <a class="button primary" href="download.html">Download Onley</a>
-          <a class="button secondary" href="https://github.com/fdaio/onley">View source</a>
+        <div class="hero-actions">
+          <a class="button button-primary" href="download.html">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+            <span>Download for macOS</span>
+            <span class="version">v0.2.9</span>
+          </a>
+          <a class="button button-ghost" href="https://github.com/fdaio/onley">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 8-4 4 4 4"/><path d="m16 8 4 4-4 4"/></svg>
+            <span>View Source</span>
+          </a>
         </div>
-        <p class="fineprint">MIT licensed · No account · No telemetry</p>
+        <ul class="trust-list" aria-label="Product commitments">
+          <li>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 5 6v5c0 4.4 3.4 8.4 7 9.5 3.6-1.1 7-5.1 7-9.5V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg>
+            MIT licensed
+          </li>
+          <li>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 10.6a2 2 0 0 0 2.8 2.8"/><path d="M9.9 5.2A10.5 10.5 0 0 1 12 5c5.5 0 9 5 9 7a11 11 0 0 1-2.3 3.4"/><path d="M6.6 6.6C4.4 8 3 10 3 12c0 2 3.5 7 9 7a10.6 10.6 0 0 0 4.4-1"/></svg>
+            No telemetry
+          </li>
+          <li>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m17 8 5 5"/><path d="m22 8-5 5"/></svg>
+            No account needed
+          </li>
+        </ul>
       </div>
-      <div class="hero-shot">
-        <img src="assets/onley-main.png" alt="Onley desktop app showing duplicate groups with keep and delete choices" width="1080" height="720">
+
+      <div class="hero-visual">
+        <div class="shot-frame">
+          <img src="assets/onley-main.png" alt="Onley desktop app showing duplicate groups with a copy selected to keep" width="2160" height="1440">
+        </div>
       </div>
     </section>
 
     <section id="features" class="section">
-      <div class="section-heading">
-        <p class="eyebrow">Why Onley</p>
+      <div class="section-heading center">
+        <p class="eyebrow">Why Onley?</p>
         <h2>Small tool. Clear decisions.</h2>
       </div>
       <div class="feature-grid">
-        <article class="card">
+        <article class="feature-card">
+          <div class="icon-box" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 6v5c0 4.4 3.4 8.4 7 9.5 3.6-1.1 7-5.1 7-9.5V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg>
+          </div>
           <h3>Local by default</h3>
-          <p>The index lives at <code>~/.onley/local.db</code>. Onley has no telemetry and no account.</p>
+          <p>The index lives at <code>~/.onley/local.db</code>. Your privacy is built in: no telemetry, no cloud, and no account required.</p>
         </article>
-        <article class="card">
+        <article class="feature-card">
+          <div class="icon-box" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg>
+          </div>
           <h3>Resume scans</h3>
-          <p>Cancel at any time. Finished files stay indexed, and the next scan skips unchanged files.</p>
+          <p>Cancel at any time. Finished files stay indexed, and the next scan skips unchanged files. A bounded worker pool keeps CPU use predictable.</p>
         </article>
-        <article class="card">
+        <article class="feature-card">
+          <div class="icon-box" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/><path d="m12 14 2 2 3-3"/></svg>
+          </div>
           <h3>Newest or oldest</h3>
           <p>Keep the newest or oldest copy in every group by modification time. Equal times fall back to path order.</p>
         </article>
-        <article class="card">
-          <h3>Confirm before delete</h3>
-          <p>The desktop client reviews the exact files first. It checks size and modification time and skips files that changed since the scan.</p>
-        </article>
-        <article class="card">
-          <h3>Desktop and CLI</h3>
-          <p>Use the native client for review, or the CLI for <code>scan</code>, <code>dupes</code>, <code>clean</code>, <code>stats</code> and <code>watch</code>.</p>
-        </article>
-        <article class="card">
-          <h3>English and 中文</h3>
-          <p>The interface follows the system language and switches with one button. The choice is remembered.</p>
-        </article>
       </div>
     </section>
 
-    <section class="section split">
-      <div>
-        <p class="eyebrow">How it works</p>
-        <h2>Three steps, one confirmation.</h2>
+    <section class="section cli">
+      <div class="cli-copy">
+        <h2>Built for power users<br><span>with a command-line interface.</span></h2>
+        <div class="cli-list">
+          <article class="cli-item">
+            <div class="icon-box" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3"/><path d="M13 15h4"/></svg>
+            </div>
+            <div>
+              <h3>CLI First</h3>
+              <p>Scan, review, and clean from the terminal. The workflow is scriptable and fast.</p>
+            </div>
+          </article>
+          <article class="cli-item">
+            <div class="icon-box" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3 7 21"/><path d="M17 3l-2 18"/><path d="M4 9h16"/><path d="M3 15h16"/></svg>
+            </div>
+            <div>
+              <h3>Byte-level comparison</h3>
+              <p>Onley compares file contents by hash, not just names, so renamed copies still match.</p>
+            </div>
+          </article>
+          <article class="cli-item">
+            <div class="icon-box" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18a8 8 0 1 1 16 0"/><path d="m12 14 4-4"/><circle cx="12" cy="18" r="1"/></svg>
+            </div>
+            <div>
+              <h3>Low resource overhead</h3>
+              <p>Written in Go, with a bounded worker pool and a local SQLite index.</p>
+            </div>
+          </article>
+        </div>
       </div>
-      <ol class="steps">
-        <li><strong>Scan.</strong> Add one or more folders. The live gauge shows hashing speed.</li>
-        <li><strong>Review.</strong> Pick a copy to keep in every group, or apply the newest/oldest policy.</li>
-        <li><strong>Delete.</strong> Confirm the exact files. The desktop client verifies them before removing the rest.</li>
-      </ol>
-    </section>
 
-    <section id="install" class="section">
-      <div class="section-heading">
-        <p class="eyebrow">Install</p>
-        <h2>Get Onley</h2>
-      </div>
-      <div class="install-grid">
-        <div class="card">
-          <h3>macOS</h3>
-          <p>The app is signed with a Developer ID and notarized by Apple.</p>
-          <pre><code>brew tap laotree/tap
-brew install --cask onley</code></pre>
-          <p class="small"><a href="https://github.com/fdaio/onley/releases/latest">Direct download</a> · Apple silicon and Intel</p>
-        </div>
-        <div class="card">
-          <h3>Windows</h3>
-          <p>Download the desktop zip or the CLI from the latest release.</p>
-          <pre><code>onley-desktop_*_windows_x64.zip</code></pre>
-          <p class="small">Windows code signing is in progress.</p>
-        </div>
-        <div class="card">
-          <h3>Linux</h3>
-          <p>Download the desktop tarball or the CLI from the latest release.</p>
-          <pre><code>tar -xzf onley-desktop_*_linux_x64.tar.gz</code></pre>
-          <p class="small">Linux packages are not code signed yet.</p>
-        </div>
-      </div>
-      <p class="release-link">
-        Every release includes checksums and the CLI for macOS, Linux and Windows.
-        <a href="download.html">Choose your platform →</a> ·
-        <a href="https://github.com/fdaio/onley/releases/latest">Latest release</a>
-      </p>
-    </section>
-
-    <section id="signing" class="section status">
-      <div>
-        <p class="eyebrow">Code signing</p>
-        <h2>Signed where it matters.</h2>
-        <p>
-          The macOS app is signed with a Developer ID Application certificate and
-          notarized by Apple. Windows code signing is in progress; Linux
-          packages are not code signed yet.
-        </p>
-        <p><a href="code-signing.html">Read the code signing policy →</a></p>
-      </div>
-      <div class="status-badges" role="group" aria-label="Signing status">
-        <span class="badge good">macOS · signed + notarized</span>
-        <span class="badge">Windows · signing in progress</span>
-        <span class="badge">Linux · unsigned</span>
+      <div class="terminal">
+        <div class="terminal-bar" aria-hidden="true"><span></span><span></span><span></span></div>
+        <pre class="terminal-body"><code><span class="term-line"><span class="prompt">$</span> onley scan ~/Downloads</span><span class="term-line dim">Scanning: /Users/you/Downloads</span><span class="term-line ok">Done: 4,821 file(s) indexed (0 unchanged skipped), 126 with duplicates.</span><span class="term-gap"></span><span class="term-line"><span class="prompt">$</span> onley stats</span><span class="term-line dim">Total indexed: 4,821</span><span class="term-line dim">Duplicates:    126</span><span class="term-gap"></span><span class="term-line"><span class="prompt">$</span> onley clean</span><span class="term-line dim">...</span><span class="term-line ok">Done: 84 deleted, 0 failed.</span><span class="term-line terminal-cursor" aria-hidden="true">▌</span></code></pre>
       </div>
     </section>
   </main>
 
   <footer class="site-footer">
-    <p>Onley · local duplicate cleanup</p>
-    <nav aria-label="Footer">
-      <a href="https://github.com/fdaio/onley">GitHub</a>
-      <a href="download.html">Download</a>
-      <a href="https://github.com/fdaio/onley/releases">Releases</a>
-      <a href="privacy.html">Privacy</a>
-      <a href="code-signing.html">Code signing policy</a>
-      <a href="https://github.com/fdaio/onley/blob/master/LICENSE">MIT License</a>
-    </nav>
+    <div class="footer-top">
+      <div class="footer-brand">
+        <a class="brand" href="./" aria-label="Onley home">
+          <img src="assets/mark.svg" alt="" width="32" height="32">
+          <span>Onley</span>
+        </a>
+        <p>A simple, focused tool for a cleaner digital workspace. Open source, privacy-respecting, and fast.</p>
+        <div class="socials">
+          <a href="https://github.com/fdaio/onley" aria-label="Onley on GitHub">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.58 2 12.25c0 4.53 2.87 8.37 6.84 9.73.5.1.68-.22.68-.49 0-.24-.01-.87-.01-1.71-2.78.62-3.37-1.37-3.37-1.37-.45-1.18-1.11-1.5-1.11-1.5-.91-.63.07-.62.07-.62 1 .07 1.53 1.06 1.53 1.06.9 1.57 2.34 1.12 2.91.85.09-.66.35-1.12.63-1.38-2.22-.26-4.56-1.14-4.56-5.06 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.71 0 0 .84-.28 2.75 1.05a9.3 9.3 0 0 1 5 0c1.91-1.33 2.75-1.05 2.75-1.05.55 1.41.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.93-2.34 4.8-4.57 5.05.36.32.68.94.68 1.9 0 1.37-.01 2.47-.01 2.81 0 .27.18.6.69.49A10.02 10.02 0 0 0 22 12.25C22 6.58 17.52 2 12 2Z"/></svg>
+          </a>
+          <a href="https://github.com/fdaio/onley/releases" aria-label="Onley releases">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+          </a>
+          <a href="https://github.com/fdaio/onley/blob/master/LICENSE" aria-label="Onley MIT license">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 5 6v5c0 4.4 3.4 8.4 7 9.5 3.6-1.1 7-5.1 7-9.5V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg>
+          </a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <h2>Product</h2>
+        <a href="download.html">Desktop App</a>
+        <a href="download.html">CLI Tool</a>
+        <a href="coming-soon.html" data-placeholder="true" title="API reference coming soon">API Reference</a>
+        <a href="https://github.com/fdaio/onley">Open Source</a>
+      </div>
+      <div class="footer-col">
+        <h2>Resources</h2>
+        <a href="https://github.com/fdaio/onley/issues">Help Center</a>
+        <a href="coming-soon.html" data-placeholder="true" title="Community page coming soon">Community</a>
+        <a href="privacy.html">Privacy Policy</a>
+        <a href="coming-soon.html" data-placeholder="true" title="Terms of use coming soon">Terms of Use</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 Onley Open Source Project. Released under MIT. · <a href="code-signing.html">Code signing policy</a></p>
+      <p class="local-status"><span class="status-dot" aria-hidden="true"></span>Local-first · no telemetry</p>
+    </div>
   </footer>
 </body>
 </html>
