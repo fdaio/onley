@@ -358,21 +358,22 @@ func (s *state) fileRow(cx *core.Scope, groupAt func() (db.DuplicateGroup, bool)
 			core.View{Style: core.Style{
 				Direction: core.Column, Gap: 1, FlexGrow: 1, FlexShrink: 1, MinWidth: core.Pt(0),
 			}, Children: []core.Node{
-				core.Text{ContentFunc: func() string { return file().Name }, StyleFunc: func() core.Style {
-					weight := core.FontWeightNormal
-					color := c.text
-					decoration := core.TextDecorationNone
-					if checked() {
-						weight = core.FontWeightSemibold
-					}
-					if deletePending() {
-						color = c.muted
-						decoration = core.TextDecorationLineThrough
-					}
-					return core.Style{
-						FontSize: 15, FontWeight: weight, Color: color, TextDecoration: decoration,
-					}
-				}},
+				core.Text{ContentFunc: func() string { return file().Name }, MaxLines: 1,
+					EllipsizeMode: core.EllipsizeMiddle, StyleFunc: func() core.Style {
+						weight := core.FontWeightNormal
+						color := c.text
+						decoration := core.TextDecorationNone
+						if checked() {
+							weight = core.FontWeightSemibold
+						}
+						if deletePending() {
+							color = c.muted
+							decoration = core.TextDecorationLineThrough
+						}
+						return core.Style{
+							FontSize: 15, FontWeight: weight, Color: color, TextDecoration: decoration,
+						}
+					}},
 				core.Show{When: showFolder, Then: func(*core.Scope) core.Node {
 					return core.View{TestID: "file-dir:" + file().Path, Children: []core.Node{
 						core.Text{Content: displayPath(filepath.Dir(file().Path), s.home), MaxLines: 1,

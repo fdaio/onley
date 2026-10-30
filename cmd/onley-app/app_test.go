@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -61,6 +62,15 @@ func startAppWithSelf(t *testing.T, store *db.DB, dir string, scan func(context.
 		Scan:       scan,
 	}
 	return nsgotest.Start(t, Root(cfg), nsgotest.Size(1080, 720))
+}
+
+func surfaceFrame(v *nsgotest.View) (x, y, width, height float32) {
+	b := v.Frame
+	for p := v.Parent; p != nil; p = p.Parent {
+		b.Origin.X += p.Frame.Origin.X - p.Offset.X
+		b.Origin.Y += p.Frame.Origin.Y - p.Offset.Y
+	}
+	return float32(b.Origin.X), float32(b.Origin.Y), float32(b.Size.Width), float32(b.Size.Height)
 }
 
 func startAppWithStorage(t *testing.T, store *db.DB, dir string, storage map[string]string) *nsgotest.App {
@@ -660,6 +670,77 @@ func TestClearChoices(t *testing.T) {
 	})
 	if app.Find("id:keep:" + keep).Props.Selected {
 		t.Errorf("keep choice is still selected after clear")
+	}
+}
+
+func TestScrollToLastGroup(t *testing.T) {
+	dir := t.TempDir()
+	for group := 0; group < 10; group++ {
+		content := strings.Repeat(string(rune('a'+group)), 4096)
+		for copyIndex := 0; copyIndex < 3; copyIndex++ {
+			sub := filepath.Join(dir, fmt.Sprintf("g%02d-%d", group, copyIndex))
+			if err := os.Mkdir(sub, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			writeFile(t, sub, "photo.jpg", content)
+		}
+	}
+	store := newStore(t)
+	scanInto(t, store, dir)
+	groups, err := store.Duplicates()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(groups) != 10 {
+		t.Fatalf("groups = %d, want 10", len(groups))
+	}
+	lastGroup := groups[len(groups)-1]
+	lastFile := lastGroup.Files[len(lastGroup.Files)-1].Path
+
+	app := startApp(t, store, dir, nil)
+	list := app.Find("id:duplicate-list")
+	if list == nil {
+		t.Fatalf("duplicate list missing\n%s", app.Dump())
+	}
+	if list.Content.Height <= list.Frame.Size.Height {
+		t.Fatalf("list content %v fits viewport %v; want a scrollable list", list.Content.Height, list.Frame.Size.Height)
+	}
+	if list.Offset.Y > 0 {
+		app.Scroll("id:duplicate-list", -list.Offset.Y)
+	}
+	app.WaitUntil(2*time.Second, func() bool { return app.Find("id:duplicate-list").Offset.Y == 0 })
+
+	app.Scroll("id:duplicate-list", 100000)
+	list = app.Find("id:duplicate-list")
+	if list.Offset.Y <= 0 {
+		t.Errorf("list did not scroll down: offset %v", list.Offset.Y)
+	}
+
+	if !app.Exists("id:keep:" + lastFile) {
+		t.Fatalf("last file row missing after scroll\n%s", app.Dump())
+	}
+	row := app.Find("id:keep:" + lastFile)
+	_, listTop, _, listHeight := surfaceFrame(list)
+	listBottom := listTop + listHeight
+	_, rowTop, _, rowHeight := surfaceFrame(row)
+	if rowTop < listTop || rowTop+rowHeight > listBottom {
+		t.Errorf("last file row at %v..%v is outside list %v..%v", rowTop, rowTop+rowHeight, listTop, listBottom)
+	}
+
+	bottom := app.Find("id:bottom-bar")
+	if bottom == nil {
+		t.Fatalf("bottom bar missing\n%s", app.Dump())
+	}
+	_, bottomTop, _, bottomHeight := surfaceFrame(bottom)
+	if bottomTop+bottomHeight > 720 {
+		t.Errorf("bottom bar at %v..%v is outside the window", bottomTop, bottomTop+bottomHeight)
+	}
+
+	beforeUp := list.Offset.Y
+	app.Scroll("id:duplicate-list", -100000)
+	list = app.Find("id:duplicate-list")
+	if list.Offset.Y >= beforeUp {
+		t.Errorf("list offset = %v after scrolling up, want less than %v", list.Offset.Y, beforeUp)
 	}
 }
 

@@ -204,7 +204,9 @@ func (s *state) results(cx *core.Scope) core.Node {
 
 func (s *state) groupsPanel(cx *core.Scope) core.Node {
 	c := colorsOf(cx)
-	return core.View{Style: core.Style{FlexGrow: 1, MinWidth: core.Pt(0), Gap: 18}, Children: []core.Node{
+	return core.View{Style: core.Style{
+		FlexGrow: 1, FlexBasis: core.Pt(0), MinWidth: core.Pt(0), MinHeight: core.Pt(0), Gap: 18,
+	}, Children: []core.Node{
 		core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 16}, Children: []core.Node{
 			core.View{Style: core.Style{FlexGrow: 1, MinWidth: core.Pt(0), Gap: 2}, Children: []core.Node{
 				core.Text{ContentFunc: s.duplicateGroupTitle, TestID: "group-summary",
@@ -215,7 +217,8 @@ func (s *state) groupsPanel(cx *core.Scope) core.Node {
 			s.autoKeepControl(cx),
 		}},
 		core.List{
-			Count: func() int { return len(s.groups.Get()) },
+			TestID: "duplicate-list",
+			Count:  func() int { return len(s.groups.Get()) },
 			Key: func(i int) any {
 				groups := s.groups.Get()
 				if i < 0 || i >= len(groups) {
@@ -224,14 +227,56 @@ func (s *state) groupsPanel(cx *core.Scope) core.Node {
 				return groups[i].MD5
 			},
 			Row:           s.groupRow,
-			EstimatedSize: 170,
+			EstimatedSize: s.estimatedGroupHeight(),
+			Footer:        core.View{Style: core.Style{Height: core.Pt(s.listFooterHeight())}},
 			Gap:           12,
-			Style:         core.Style{FlexGrow: 1, MinHeight: core.Pt(0)},
+			Style:         core.Style{FlexGrow: 1, FlexBasis: core.Pt(0), MinHeight: core.Pt(0)},
 			Empty:         s.emptyState(cx),
 		},
 		s.noteText(cx),
 		s.bottomBar(cx),
 	}}
+}
+
+const (
+	groupRowBaseHeight = 66
+	groupRowFileHeight = 42
+	groupRowPathHeight = 15
+	groupRowMinHeight  = 150
+
+	listFooterBaseHeight = 120
+	listFooterRowHeight  = 4
+)
+
+// estimatedGroupHeight returns the tallest group row estimate. A low estimate
+// makes the list stop before the last row, because the list never measures a
+// row that stays below the viewport.
+func (s *state) estimatedGroupHeight() core.Points {
+	tallest := 0
+	for _, group := range s.groups.Get() {
+		height := groupRowBaseHeight + groupRowFileHeight*len(group.Files)
+		if hasDuplicateNames(group) {
+			height += groupRowPathHeight * len(group.Files)
+		}
+		if height > tallest {
+			tallest = height
+		}
+	}
+	if tallest < groupRowMinHeight {
+		tallest = groupRowMinHeight
+	}
+	return core.Points(tallest)
+}
+
+// listFooterHeight reserves scroll range below the last row. The native list
+// can set its scroll range before it measures the last row, so the range ends
+// above the row. The reserve grows with the row count.
+func (s *state) listFooterHeight() core.Points {
+	count := len(s.groups.Get())
+	if count == 0 {
+		return 0
+	}
+	return core.Points(listFooterBaseHeight + listFooterRowHeight*count)
 }
 
 func (s *state) autoKeepControl(cx *core.Scope) core.Node {
@@ -252,6 +297,7 @@ func (s *state) bottomBar(cx *core.Scope) core.Node {
 	c := colorsOf(cx)
 	disabled := func() bool { return s.scanning.Get() || s.busy.Get() }
 	return core.View{
+		TestID: "bottom-bar",
 		Style: core.Style{
 			FlexShrink: 0, Direction: core.Row, AlignItems: core.AlignCenter, Gap: 12,
 			Background: c.surface, BorderWidth: 1, BorderColor: c.border,
