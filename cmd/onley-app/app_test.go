@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -101,8 +102,8 @@ func TestChineseLocaleDefault(t *testing.T) {
 	if !app.Exists("text:仅本地运行") {
 		t.Fatalf("Chinese locale did not select Chinese\n%s", app.Dump())
 	}
-	if !app.Exists("text:0 组重复文件") {
-		t.Errorf("Chinese summary missing\n%s", app.Dump())
+	if got := app.Find("id:group-summary").Text; got != "0" {
+		t.Errorf("Chinese summary = %q, want 0\n%s", got, app.Dump())
 	}
 }
 
@@ -117,17 +118,17 @@ func TestStoredLanguage(t *testing.T) {
 
 func TestLanguageToggle(t *testing.T) {
 	app := startApp(t, newStore(t), t.TempDir(), nil)
-	if !app.Exists("text:Local only") {
+	if !app.Exists("text:LOCAL ONLY") {
 		t.Fatalf("English header missing\n%s", app.Dump())
 	}
 	app.Press("id:language-toggle")
 	app.WaitFor("text:仅本地运行", 2*time.Second)
-	if !app.Exists("text:0 组重复文件") {
-		t.Errorf("Chinese summary missing\n%s", app.Dump())
+	if got := app.Find("id:group-summary").Text; got != "0" {
+		t.Errorf("Chinese summary = %q, want 0\n%s", got, app.Dump())
 	}
 	app.Screenshot("chinese")
 	app.Press("id:language-toggle")
-	app.WaitFor("text:Local only", 2*time.Second)
+	app.WaitFor("text:LOCAL ONLY", 2*time.Second)
 }
 
 func TestEmptyState(t *testing.T) {
@@ -137,13 +138,13 @@ func TestEmptyState(t *testing.T) {
 	if !app.Exists("id:empty-state") {
 		t.Fatalf("empty state missing\n%s", app.Dump())
 	}
-	if got := app.Find("id:group-summary").Text; got != "0 duplicate groups" {
-		t.Errorf("groups = %q, want 0 duplicate groups", got)
+	if got := app.Find("id:group-summary").Text; got != "0" {
+		t.Errorf("groups = %q, want 0", got)
 	}
-	if got := app.Find("id:duplicate-summary").Text; got != "0 files · 0 B reclaimable" {
-		t.Errorf("summary = %q, want 0 files · 0 B reclaimable", got)
+	if got := app.Find("id:duplicate-summary").Text; got != "0 B" {
+		t.Errorf("summary = %q, want 0 B", got)
 	}
-	if !app.Exists("text:No duplicates yet") {
+	if !app.Exists("text:NO DUPLICATES YET") {
 		t.Errorf("empty title missing\n%s", app.Dump())
 	}
 	if app.Exists("text:✓") {
@@ -210,10 +211,85 @@ func TestScanMultipleRoots(t *testing.T) {
 	app := startApp(t, newStore(t), first, nil)
 	addFolderViaDialog(t, app, second)
 	app.Press("id:scan-button")
-	app.WaitFor("text:2 duplicate groups", 10*time.Second)
-	summary := app.Find("id:duplicate-summary").Text
-	if !strings.Contains(summary, "4 files") || !strings.Contains(summary, "8.0 KB") {
-		t.Errorf("summary = %q, want 4 files and 8.0 KB", summary)
+	app.WaitUntil(10*time.Second, func() bool { return app.Find("id:group-summary").Text == "2" })
+	if got := app.Find("id:indexed-files").Text; got != "4" {
+		t.Errorf("indexed files = %q, want 4", got)
+	}
+	if summary := app.Find("id:duplicate-summary").Text; !strings.Contains(summary, "8.0 KB") {
+		t.Errorf("summary = %q, want 8.0 KB", summary)
+	}
+}
+
+func TestCategoryTabsFilter(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "photo.jpg", strings.Repeat("p", 4096))
+	writeFile(t, dir, "photo copy.jpg", strings.Repeat("p", 4096))
+	writeFile(t, dir, "clip.mov", strings.Repeat("v", 4096))
+	writeFile(t, dir, "clip copy.mov", strings.Repeat("v", 4096))
+	writeFile(t, dir, "report.pdf", strings.Repeat("d", 4096))
+	writeFile(t, dir, "report copy.pdf", strings.Repeat("d", 4096))
+	store := newStore(t)
+	scanInto(t, store, dir)
+
+	app := startApp(t, store, dir, nil)
+	for _, label := range []string{"ALL COPIES (03)", "IMAGES (01)", "VIDEOS (01)", "DOCUMENTS (01)"} {
+		if !app.Exists("text:" + label) {
+			t.Errorf("tab %q missing\n%s", label, app.Dump())
+		}
+	}
+	app.Press("id:tab:images")
+	app.WaitUntil(2*time.Second, func() bool { return !app.Exists("id:keep:" + filepath.Join(dir, "clip.mov")) })
+	if !app.Exists("id:keep:" + filepath.Join(dir, "photo.jpg")) {
+		t.Errorf("image group missing after filter\n%s", app.Dump())
+	}
+	app.Press("id:tab:all")
+	app.WaitUntil(2*time.Second, func() bool { return app.Exists("id:keep:" + filepath.Join(dir, "clip.mov")) })
+}
+
+func TestSearchFilters(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "alpha.bin", strings.Repeat("a", 4096))
+	writeFile(t, dir, "alpha copy.bin", strings.Repeat("a", 4096))
+	writeFile(t, dir, "beta.bin", strings.Repeat("b", 4096))
+	writeFile(t, dir, "beta copy.bin", strings.Repeat("b", 4096))
+	store := newStore(t)
+	scanInto(t, store, dir)
+
+	app := startApp(t, store, dir, nil)
+	app.Press("id:tab:search")
+	app.WaitFor("id:search-input", 2*time.Second)
+	app.Type("id:search-input", "alpha\n")
+	app.WaitUntil(2*time.Second, func() bool { return !app.Exists("id:keep:" + filepath.Join(dir, "beta.bin")) })
+	if !app.Exists("id:keep:" + filepath.Join(dir, "alpha.bin")) {
+		t.Errorf("alpha group missing after search\n%s", app.Dump())
+	}
+}
+
+func TestKeepByPath(t *testing.T) {
+	dir := t.TempDir()
+	z := writeFile(t, dir, "z.bin", strings.Repeat("a", 4096))
+	a := writeFile(t, dir, "a.bin", strings.Repeat("a", 4096))
+	setMtime(t, a, 100)
+	setMtime(t, z, 200)
+	store := newStore(t)
+	scanInto(t, store, dir)
+
+	app := startApp(t, store, dir, nil)
+	app.Press("id:policy-path")
+	app.WaitUntil(2*time.Second, func() bool { return app.Find("id:keep:" + a).Props.Selected })
+	if app.Find("id:keep:" + z).Props.Selected {
+		t.Errorf("z.bin is still kept after keep-by-path")
+	}
+}
+
+func TestDropFolder(t *testing.T) {
+	first := t.TempDir()
+	second := t.TempDir()
+	app := startApp(t, newStore(t), first, nil)
+	uri := (&url.URL{Scheme: "file", Path: second}).String()
+	app.DropFiles("id:drop-zone", uri)
+	if !app.Exists("id:folder:" + second) {
+		t.Fatalf("dropped folder missing: %s\n%s", uri, app.Dump())
 	}
 }
 
@@ -248,14 +324,17 @@ func TestScanSelectCancelThenDelete(t *testing.T) {
 	store := newStore(t)
 	app := startApp(t, store, dir, nil)
 	app.Press("id:scan-button")
-	app.WaitFor("text:1 duplicate group", 10*time.Second)
+	app.WaitUntil(10*time.Second, func() bool { return app.Find("id:group-summary").Text == "1" })
 
-	if got := app.Find("id:duplicate-summary").Text; !strings.Contains(got, "2 files") || !strings.Contains(got, "4.0 KB") {
-		t.Errorf("summary = %q, want 3 files and 4.0 KB", got)
+	if got := app.Find("id:indexed-files").Text; got != "3" {
+		t.Errorf("indexed files = %q, want 3", got)
+	}
+	if got := app.Find("id:duplicate-summary").Text; !strings.Contains(got, "4.0 KB") {
+		t.Errorf("summary = %q, want 4.0 KB", got)
 	}
 
 	app.Press("id:keep:" + keep)
-	app.WaitFor("text:Delete 1 file", 2*time.Second)
+	app.WaitFor("text:REVIEW & DELETE (1 FILE)", 2*time.Second)
 	app.Press("id:delete-files")
 	if !app.Exists("text:Delete 1 file and free 4.0 KB?") {
 		t.Fatalf("confirmation missing\n%s", app.Dump())
@@ -275,9 +354,9 @@ func TestScanSelectCancelThenDelete(t *testing.T) {
 	if _, err := os.Stat(keep); err != nil {
 		t.Errorf("kept file is gone: %v", err)
 	}
-	app.WaitUntil(5*time.Second, func() bool { return app.Find("id:group-summary").Text == "0 duplicate groups" })
-	if got := app.Find("id:duplicate-summary").Text; got != "0 files · 0 B reclaimable" {
-		t.Errorf("summary = %q, want 0 files · 0 B reclaimable", got)
+	app.WaitUntil(5*time.Second, func() bool { return app.Find("id:group-summary").Text == "0" })
+	if got := app.Find("id:duplicate-summary").Text; got != "0 B" {
+		t.Errorf("summary = %q, want 0 B", got)
 	}
 }
 
@@ -291,7 +370,7 @@ func TestDeleteAbortsWhenKeptFileIsGone(t *testing.T) {
 
 	app := startApp(t, store, dir, nil)
 	app.Press("id:keep:" + keep)
-	app.WaitFor("text:Delete 1 file", 2*time.Second)
+	app.WaitFor("text:REVIEW & DELETE (1 FILE)", 2*time.Second)
 	if err := os.Remove(keep); err != nil {
 		t.Fatal(err)
 	}
@@ -301,7 +380,7 @@ func TestDeleteAbortsWhenKeptFileIsGone(t *testing.T) {
 	if _, err := os.Stat(other); err != nil {
 		t.Errorf("other copy was deleted after the kept copy vanished: %v", err)
 	}
-	app.WaitUntil(5*time.Second, func() bool { return app.Find("id:group-summary").Text == "1 duplicate group" })
+	app.WaitUntil(5*time.Second, func() bool { return app.Find("id:group-summary").Text == "1" })
 }
 
 func TestDeleteRefusesChangedFile(t *testing.T) {
@@ -322,7 +401,7 @@ func TestDeleteRefusesChangedFile(t *testing.T) {
 
 	app := startApp(t, store, dir, nil)
 	app.Press("id:keep:" + keep)
-	app.WaitFor("text:Delete 1 file", 2*time.Second)
+	app.WaitFor("text:REVIEW & DELETE (1 FILE)", 2*time.Second)
 	app.Press("id:delete-files")
 	app.Press("id:delete-confirm")
 	app.WaitFor("text:changed since scan", 10*time.Second)
@@ -330,8 +409,8 @@ func TestDeleteRefusesChangedFile(t *testing.T) {
 	if _, err := os.Stat(changed); err != nil {
 		t.Errorf("changed file was deleted: %v", err)
 	}
-	if got := app.Find("id:group-summary").Text; got != "1 duplicate group" {
-		t.Errorf("groups = %q, want 1 duplicate group", got)
+	if got := app.Find("id:group-summary").Text; got != "1" {
+		t.Errorf("groups = %q, want 1", got)
 	}
 }
 
@@ -349,11 +428,11 @@ func TestDeleteCleansRecordOfMissingFile(t *testing.T) {
 
 	app := startApp(t, store, dir, nil)
 	app.Press("id:keep:" + keep)
-	app.WaitFor("text:Delete 1 file", 2*time.Second)
+	app.WaitFor("text:REVIEW & DELETE (1 FILE)", 2*time.Second)
 	app.Press("id:delete-files")
 	app.Press("id:delete-confirm")
 	app.WaitFor("text:1 was already gone", 10*time.Second)
-	app.WaitUntil(5*time.Second, func() bool { return app.Find("id:group-summary").Text == "0 duplicate groups" })
+	app.WaitUntil(5*time.Second, func() bool { return app.Find("id:group-summary").Text == "0" })
 }
 
 func setMtime(t *testing.T, path string, unix int64) {
@@ -379,7 +458,7 @@ func TestAutoKeepNewestAcrossGroups(t *testing.T) {
 
 	app := startApp(t, store, dir, nil)
 	app.Press("id:policy-newest")
-	app.WaitFor("text:Delete 2 files", 2*time.Second)
+	app.WaitFor("text:REVIEW & DELETE (2 FILES)", 2*time.Second)
 	app.Press("id:delete-files")
 	if !app.Exists("text:Delete 2 files and free 8.0 KB?") {
 		t.Fatalf("confirmation missing\n%s", app.Dump())
@@ -400,7 +479,7 @@ func TestAutoKeepNewestAcrossGroups(t *testing.T) {
 			t.Errorf("old copy %s still exists: %v", path, err)
 		}
 	}
-	app.WaitUntil(5*time.Second, func() bool { return app.Find("id:group-summary").Text == "0 duplicate groups" })
+	app.WaitUntil(5*time.Second, func() bool { return app.Find("id:group-summary").Text == "0" })
 }
 
 func TestAutoKeepOldestAcrossGroups(t *testing.T) {
@@ -418,9 +497,8 @@ func TestAutoKeepOldestAcrossGroups(t *testing.T) {
 
 	app := startApp(t, store, dir, nil)
 	app.Press("id:keep:" + oldA)
-	app.WaitFor("text:Delete 1 file", 2*time.Second)
 	app.Press("id:policy-oldest")
-	app.WaitFor("text:Delete 2 files", 2*time.Second)
+	app.WaitFor("text:REVIEW & DELETE (2 FILES)", 2*time.Second)
 	if got, ok := app.Storage().GetItem("keep_policy"); !ok || got != "oldest" {
 		t.Errorf("stored keep policy = %q, %v; want oldest", got, ok)
 	}
@@ -470,7 +548,7 @@ func TestAutoKeepKeepsRunningExecutable(t *testing.T) {
 	if !app.Find("id:keep:" + self).Props.Selected {
 		t.Fatalf("running executable was not kept\n%s", app.Dump())
 	}
-	app.WaitFor("text:Delete 1 file", 2*time.Second)
+	app.WaitFor("text:REVIEW & DELETE (1 FILE)", 2*time.Second)
 	app.Press("id:delete-files")
 	if !app.Exists("text:Delete 1 file and free 4.0 KB?") {
 		t.Fatalf("confirmation missing\n%s", app.Dump())
@@ -571,18 +649,18 @@ func TestFileRowsShowFolder(t *testing.T) {
 	scanInto(t, store, second)
 
 	app := startApp(t, store, first, nil)
-	for path, want := range map[string]string{one: first, two: second} {
+	for _, path := range []string{one, two} {
 		row := app.Find("id:file-dir:" + path)
 		if row == nil {
-			t.Fatalf("folder label missing for %s\n%s", path, app.Dump())
+			t.Fatalf("path label missing for %s\n%s", path, app.Dump())
 		}
-		if got := row.Children[0].Text; got != want {
-			t.Errorf("folder for %s = %q, want %q", path, got, want)
+		if got := row.Children[0].Text; got != path {
+			t.Errorf("path for %s = %q", path, got)
 		}
 	}
 }
 
-func TestFileRowsHideFolderForDistinctNames(t *testing.T) {
+func TestFileRowsShowPathForDistinctNames(t *testing.T) {
 	dir := t.TempDir()
 	content := strings.Repeat("a", 4096)
 	one := writeFile(t, dir, "a.bin", content)
@@ -592,8 +670,8 @@ func TestFileRowsHideFolderForDistinctNames(t *testing.T) {
 
 	app := startApp(t, store, dir, nil)
 	for _, path := range []string{one, two} {
-		if app.Exists("id:file-dir:" + path) {
-			t.Errorf("folder label shown for distinct names\n%s", app.Dump())
+		if !app.Exists("id:file-dir:" + path) {
+			t.Errorf("path label missing for distinct names\n%s", app.Dump())
 		}
 	}
 }
@@ -608,11 +686,11 @@ func TestAutoKeepHighlightMatchesChoices(t *testing.T) {
 	scanInto(t, store, dir)
 
 	app := startAppWithStorage(t, store, dir, map[string]string{"keep_policy": "newest"})
-	if app.Find("id:policy-newest").Props.Selected {
-		t.Fatalf("newest is highlighted before it is applied\n%s", app.Dump())
+	if !app.Find("id:policy-newest").Props.Selected {
+		t.Fatalf("newest is not applied on load\n%s", app.Dump())
 	}
 	app.Press("id:policy-newest")
-	app.WaitFor("text:Delete 1 file", 2*time.Second)
+	app.WaitFor("text:REVIEW & DELETE (1 FILE)", 2*time.Second)
 	if !app.Find("id:policy-newest").Props.Selected {
 		t.Errorf("newest is not highlighted after it is applied\n%s", app.Dump())
 	}
@@ -654,22 +732,22 @@ func TestClearChoices(t *testing.T) {
 	scanInto(t, store, dir)
 
 	app := startApp(t, store, dir, nil)
-	if !app.Find("id:clear-choices").Props.Disabled {
-		t.Errorf("clear choices is enabled with no choices")
-	}
-	app.Press("id:keep:" + keep)
-	app.WaitFor("text:Delete 1 file", 2*time.Second)
 	if app.Find("id:clear-choices").Props.Disabled {
-		t.Errorf("clear choices is disabled with a choice")
+		t.Errorf("clear choices is disabled on load")
 	}
-
 	app.Press("id:clear-choices")
 	app.WaitUntil(2*time.Second, func() bool {
 		return app.Find("id:delete-files").Props.Disabled &&
-			app.Find("id:delete-files").Props.Label == "Delete"
+			app.Find("id:delete-files").Props.Label == "REVIEW & DELETE (0 FILES)"
 	})
 	if app.Find("id:keep:" + keep).Props.Selected {
 		t.Errorf("keep choice is still selected after clear")
+	}
+
+	app.Press("id:keep:" + keep)
+	app.WaitFor("text:REVIEW & DELETE (1 FILE)", 2*time.Second)
+	if app.Find("id:clear-choices").Props.Disabled {
+		t.Errorf("clear choices is disabled with a choice")
 	}
 }
 
@@ -754,6 +832,6 @@ func TestNativeScreenshot(t *testing.T) {
 
 	app := startApp(t, store, dir, nil)
 	app.Press("id:keep:" + keep)
-	app.WaitFor("text:Delete 1 file", 2*time.Second)
+	app.WaitFor("text:REVIEW & DELETE (1 FILE)", 2*time.Second)
 	app.Screenshot("onley-main")
 }

@@ -71,14 +71,16 @@ brew install --cask onley
 The NSGo desktop client covers the daily cleanup loop: scan one or more folders,
 review duplicate groups, choose one copy to keep per group, and delete the rest
 after one confirmation. Scanning shows a live MB/s gauge with a moving needle.
-The bottom bar holds the selected folders, and a folder inside another selected
-folder is merged into its parent before scanning. Merging uses absolute paths,
-so symlink aliases are not resolved. The header's keep policy selects the newest
-or oldest file in every group by modification time; the delete button then shows
-the resulting count and opens the confirmation. When two copies share a file
-name, each row shows its folder below the name, so the rows stay distinct.
-Folder tags have a remove control, and Clear choices drops every keep choice.
-The policy never deletes without confirmation. It uses the same `~/.onley/local.db` index as the CLI.
+The sidebar holds the source folders; drag a folder onto the drop zone or click
+it to type a path. A folder inside another selected folder is merged into its
+parent before scanning; merging uses absolute paths, so symlink aliases are not
+resolved. The header shows indexed files, duplicate groups and reclaimable
+space. The tabs filter groups by file type, and Search filters by file name or
+path. The bottom bar holds the auto-select policy: Keep newest, Keep oldest, or
+Keep by path. Each group card shows a gradient preview, file tags and the full
+path of every copy; the original copy is the first path. Clear drops every keep
+choice, and Review & Delete opens the confirmation. The policy never deletes
+without confirmation. It uses the same `~/.onley/local.db` index as the CLI.
 Release builds of the macOS app are signed with a Developer ID and notarized.
 Local `make app` builds are not signed. Windows code signing is in progress;
 Linux packages remain unsigned; see the note below before opening one.
@@ -100,9 +102,9 @@ Windows and Linux builds. The macOS app is the validated target in this
 preview. The Windows and Linux builds compile and package, but have not been
 run yet.
 
-The client shows the Midnight Terminal dark palette. It is available in English
-and Simplified Chinese. The first launch follows the system language; the
-EN/中文 button in the top bar switches it, and the choice is remembered.
+The client uses the black, paper and pink brutalist palette. It is available in
+English and Simplified Chinese. The first launch follows the system language;
+the EN/中文 button in the sidebar switches it, and the choice is remembered.
 UI strings live in `internal/i18n`; add a catalog there to support another
 language.
 

@@ -3,10 +3,12 @@ package main
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/oneo-me/nsgo/base"
 	"github.com/oneo-me/nsgo/core"
+	"github.com/oneo-me/nsgo/icons/lucide"
 
 	"onley/internal/appmodel"
 	"onley/internal/db"
@@ -28,18 +30,15 @@ type colors struct {
 	accentPressed  core.Color
 	accentText     core.Color
 	accentSoft     core.Color
-	danger         core.Color
-	dangerHover    core.Color
-	dangerPressed  core.Color
-	dangerSoft     core.Color
 	success        core.Color
+	successSoft    core.Color
+	danger         core.Color
+	dangerSoft     core.Color
+	warning        core.Color
 }
 
 func colorsOf(cx *core.Scope) colors {
 	p := cx.Theme().Light
-	if cx.Dark() {
-		p = cx.Theme().Dark
-	}
 	return colors{
 		background:     p.Background,
 		surface:        p.Surface,
@@ -53,31 +52,26 @@ func colorsOf(cx *core.Scope) colors {
 		accentPressed:  p.AccentPressed,
 		accentText:     p.AccentText,
 		accentSoft:     p.Accent.Faded(0.12),
-		danger:         p.Danger,
-		dangerHover:    p.Danger.Faded(0.82),
-		dangerPressed:  p.Danger.Faded(0.7),
-		dangerSoft:     p.Danger.Faded(0.14),
 		success:        p.Success,
+		successSoft:    core.RGB(0xB9E4C9),
+		danger:         p.Danger,
+		dangerSoft:     p.Danger.Faded(0.12),
+		warning:        p.Warning,
 	}
 }
 
 func line(content string, size core.Points, weight core.FontWeight, color core.Color) core.Text {
-	return core.Text{Content: content, Style: core.Style{FontSize: size, FontWeight: weight, Color: color}}
+	return core.Text{Content: content, Style: core.Style{FontFamily: monoFont, FontSize: size,
+		FontWeight: weight, Color: color}}
 }
 
 func linef(content func() string, size core.Points, weight core.FontWeight, color core.Color) core.Text {
-	return core.Text{ContentFunc: content, Style: core.Style{FontSize: size, FontWeight: weight, Color: color}}
+	return core.Text{ContentFunc: content, Style: core.Style{FontFamily: monoFont, FontSize: size,
+		FontWeight: weight, Color: color}}
 }
 
 func spacer() core.Node {
 	return core.View{Style: core.Style{FlexGrow: 1}}
-}
-
-func cardStyle(c colors) core.Style {
-	return core.Style{
-		Background: c.surface, CornerRadius: 12, BorderWidth: 1, BorderColor: c.border,
-		Padding: core.All(14), Gap: 10,
-	}
 }
 
 type buttonKind uint8
@@ -91,14 +85,14 @@ const (
 
 func appButton(cx *core.Scope, label, testID string, kind buttonKind, disabled func() bool, onPress func()) core.Node {
 	c := colorsOf(cx)
-	background, hover, pressed, foreground, border := c.accent, c.accentHover, c.accentPressed, c.accentText, c.accent
+	background, hover, pressed, foreground, border := c.accent, c.accentHover, c.accentPressed, c.text, c.text
 	switch kind {
 	case buttonSecondary:
-		background, hover, pressed, foreground, border = c.background, c.surfaceHover, c.surfacePressed, c.text, c.border
+		background, hover, pressed, foreground, border = c.surface, c.surfaceHover, c.surfacePressed, c.text, c.text
 	case buttonDanger:
-		background, hover, pressed, foreground, border = c.danger, c.dangerHover, c.dangerPressed, c.background, c.danger
+		background, hover, pressed, foreground, border = c.accent, c.accentHover, c.accentPressed, c.text, c.text
 	case buttonGhost:
-		background, hover, pressed, foreground, border = c.surface, c.surfaceHover, c.surfacePressed, c.muted, c.surface
+		background, hover, pressed, foreground, border = c.surface, c.surfaceHover, c.surfacePressed, c.text, c.surface
 	}
 	return base.Button{
 		OnPress: func(core.PressEvent) {
@@ -111,182 +105,173 @@ func appButton(cx *core.Scope, label, testID string, kind buttonKind, disabled f
 		TestID:   testID,
 		Style: core.Style{
 			Background: background, BorderWidth: 1, BorderColor: border,
-			CornerRadius: 8, Padding: core.Symmetric(9, 14),
-			AlignItems: core.AlignCenter, JustifyContent: core.JustifyCenter,
+			Padding: core.Symmetric(7, 12), AlignItems: core.AlignCenter, JustifyContent: core.JustifyCenter,
 			Hover:    &core.Style{Background: hover},
 			Active:   &core.Style{Background: pressed},
-			Disabled: &core.Style{Opacity: core.Alpha(0.45)},
+			Disabled: &core.Style{Opacity: core.Alpha(0.4)},
 		},
-		Children: []core.Node{line(label, 13, core.FontWeightSemibold, foreground)},
+		Children: []core.Node{core.Text{Content: strings.ToUpper(label),
+			Style: core.Style{FontFamily: monoFont, FontSize: 9, FontWeight: core.FontWeightBold, Color: foreground}}},
 	}
 }
 
-func (s *state) policySegment(cx *core.Scope, label, testID string, policy appmodel.KeepPolicy) core.Node {
+func statusBox(cx *core.Scope, checked func() bool) core.Node {
 	c := colorsOf(cx)
-	// Auto keep is a one-shot action, so only the last applied policy can stay
-	// highlighted. A stored policy alone does not mean it was applied, and a
-	// tie in modification times can match both policies at once.
-	selected := func() bool {
-		if s.keepPolicy.Get() != policy {
-			return false
-		}
-		groups := s.groups.Get()
-		if len(groups) == 0 {
-			return false
-		}
-		keep := s.keep.Get()
-		for _, group := range groups {
-			path := keep[group.MD5]
-			if path == "" {
-				return false
+	return core.View{
+		StyleFunc: func() core.Style {
+			background := c.surface
+			if checked() {
+				background = c.successSoft
 			}
-			if self, found := appmodel.ProtectedFile(group, s.selfPath); found {
-				if !selfpath.Same(path, self.Path) {
-					return false
-				}
-				continue
+			return core.Style{
+				Width: core.Pt(16), Height: core.Pt(16), BorderWidth: 1, BorderColor: c.text,
+				Background: background, AlignItems: core.AlignCenter, JustifyContent: core.JustifyCenter,
 			}
-			if path != appmodel.ChooseKeep(group, policy).Path {
-				return false
-			}
-		}
-		return true
-	}
-	return base.Button{
-		OnPress:  func(core.PressEvent) { s.applyKeepPolicy(policy) },
-		Disabled: func() bool { return s.scanning.Get() || s.busy.Get() || len(s.groups.Get()) == 0 },
-		Selected: selected,
-		Label:    label,
-		TestID:   testID,
-		Style: core.Style{
-			CornerRadius: 6, Padding: core.Symmetric(6, 12),
-			AlignItems: core.AlignCenter, JustifyContent: core.JustifyCenter,
-			Hover:    &core.Style{Background: c.accentSoft},
-			Active:   &core.Style{Background: c.accentPressed},
-			Selected: &core.Style{Background: c.accent},
-			Disabled: &core.Style{Opacity: core.Alpha(0.45)},
 		},
-		Children: []core.Node{core.Text{Content: label, StyleFunc: func() core.Style {
-			color := c.muted
-			if selected() {
-				color = c.accentText
-			}
-			return core.Style{FontSize: 12, FontWeight: core.FontWeightMedium, Color: color}
+		Children: []core.Node{core.Show{When: checked, Then: func(*core.Scope) core.Node {
+			return core.Icon{SVG: lucide.Check(), Style: core.Style{Width: core.Pt(10), Height: core.Pt(10), Color: c.text}}
 		}}},
 	}
 }
 
-func radioDot(cx *core.Scope, checked func() bool) core.Node {
-	c := colorsOf(cx)
-	return core.View{
-		StyleFunc: func() core.Style {
-			border := c.border
-			if checked() {
-				border = c.accent
+func (s *state) policySelected(policy appmodel.KeepPolicy) bool {
+	if s.keepPolicy.Get() != policy {
+		return false
+	}
+	groups := s.groups.Get()
+	if len(groups) == 0 {
+		return false
+	}
+	keep := s.keep.Get()
+	for _, group := range groups {
+		path := keep[group.MD5]
+		if path == "" {
+			return false
+		}
+		if self, found := appmodel.ProtectedFile(group, s.selfPath); found {
+			if !selfpath.Same(path, self.Path) {
+				return false
 			}
-			return core.Style{
-				Width: core.Pt(18), Height: core.Pt(18), CornerRadius: 9,
-				BorderWidth: 1.5, BorderColor: border,
-				AlignItems: core.AlignCenter, JustifyContent: core.JustifyCenter,
-			}
-		},
-		Children: []core.Node{core.Show{
-			When: checked,
-			Then: func(*core.Scope) core.Node {
-				return core.View{Style: core.Style{Width: core.Pt(8), Height: core.Pt(8), CornerRadius: 4, Background: c.accent}}
-			},
-		}},
+			continue
+		}
+		if path != appmodel.ChooseKeep(group, policy).Path {
+			return false
+		}
 	}
-}
-
-func speedText(bytesPerSecond float64) string {
-	return format.Bytes(int64(bytesPerSecond)) + "/s"
-}
-
-func formatDuration(d time.Duration) string {
-	if d < time.Minute {
-		return fmt.Sprintf("%ds", int(d.Seconds()))
-	}
-	if d < time.Hour {
-		return fmt.Sprintf("%d:%02d", int(d.Minutes()), int(d.Seconds())%60)
-	}
-	return fmt.Sprintf("%d:%02d:%02d", int(d.Hours()), int(d.Minutes())%60, int(d.Seconds())%60)
+	return true
 }
 
 func (s *state) groupRow(cx *core.Scope, row core.ListRow) core.Node {
 	c := colorsOf(cx)
 	groupAt := func() (db.DuplicateGroup, bool) {
-		groups := s.groups.Get()
+		groups := s.visible.Get()
 		i := row.Index()
 		if i < 0 || i >= len(groups) {
 			return db.DuplicateGroup{}, false
 		}
 		return groups[i], true
 	}
+	if _, ok := groupAt(); !ok {
+		return core.View{}
+	}
 	return core.View{
 		Style: core.Style{
-			Background: c.surface, CornerRadius: 12, BorderWidth: 1, BorderColor: c.border,
-			Padding: core.All(14), Gap: 6,
+			Background: c.surface, BorderWidth: 2, BorderColor: c.border,
+			Direction: core.Row, Padding: core.All(10), Gap: 12,
 		},
 		Children: []core.Node{
-			core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 8}, Children: []core.Node{
-				linef(func() string {
-					group, ok := groupAt()
-					if !ok {
-						return s.t(i18n.KeyGroupWord)
-					}
-					return fmt.Sprintf("%s · %s", s.tf(i18n.KeyGroup, row.Index()+1), s.copyCount(len(group.Files)))
-				}, 13, core.FontWeightNormal, c.muted),
-				spacer(),
-				linef(func() string {
-					group, ok := groupAt()
-					if !ok {
-						return ""
-					}
-					return format.Bytes(group.Size)
-				}, 12, core.FontWeightNormal, c.muted),
+			s.preview(cx, groupAt),
+			core.View{Style: core.Style{
+				FlexGrow: 1, FlexBasis: core.Pt(0), MinWidth: core.Pt(0),
+				Direction: core.Column, JustifyContent: core.JustifyCenter,
+			}, Children: []core.Node{
+				core.Each(
+					func() []db.FileRecord {
+						current, found := groupAt()
+						if !found {
+							return nil
+						}
+						return current.Files
+					},
+					func(file db.FileRecord) string { return file.Path },
+					func(cx *core.Scope, file func() db.FileRecord, index func() int) core.Node {
+						return s.fileRow(cx, groupAt, file, index)
+					},
+				),
 			}},
-			core.Each(
-				func() []db.FileRecord {
-					group, ok := groupAt()
-					if !ok {
-						return nil
-					}
-					return group.Files
-				},
-				func(file db.FileRecord) string { return file.Path },
-				func(cx *core.Scope, file func() db.FileRecord, _ func() int) core.Node {
-					return s.fileRow(cx, groupAt, file)
-				},
-			),
-			linef(func() string {
-				group, ok := groupAt()
-				if !ok || s.keep.Get()[group.MD5] != "" {
-					return ""
-				}
-				if _, found := appmodel.ProtectedFile(group, s.selfPath); found {
-					return s.t(i18n.KeySelfKeepHint)
-				}
-				return s.t(i18n.KeyKeepHint)
-			}, 11, core.FontWeightNormal, c.muted),
 		},
 	}
 }
 
-// hasDuplicateNames reports whether two copies in the group share a file name.
-// The folder is shown only in that case.
-func hasDuplicateNames(group db.DuplicateGroup) bool {
-	seen := make(map[string]bool, len(group.Files))
-	for _, file := range group.Files {
-		if seen[file.Name] {
-			return true
+func (s *state) preview(cx *core.Scope, groupAt func() (db.DuplicateGroup, bool)) core.Node {
+	c := colorsOf(cx)
+	file := func() db.FileRecord {
+		group, ok := groupAt()
+		if !ok || len(group.Files) == 0 {
+			return db.FileRecord{}
 		}
-		seen[file.Name] = true
+		return group.Files[0]
 	}
-	return false
+	ext := func() string {
+		value := strings.TrimPrefix(filepath.Ext(file().Name), ".")
+		if value == "" {
+			return "FILE"
+		}
+		return strings.ToUpper(value)
+	}
+	date := func() string {
+		return strings.ToUpper(time.Unix(file().Mtime, 0).Format("Jan 02"))
+	}
+	return core.View{Style: core.Style{
+		Width: core.Pt(180), FlexShrink: 0, Direction: core.Column, Gap: 5,
+	}, Children: []core.Node{
+		core.View{StyleFunc: func() core.Style {
+			group, ok := groupAt()
+			gradient := previewGradient("")
+			if ok {
+				gradient = previewGradient(group.MD5)
+			}
+			return core.Style{
+				Width: core.Pct(100), Height: core.Pt(116), BorderWidth: 2, BorderColor: c.border,
+				Gradients: []core.Gradient{gradient},
+			}
+		}},
+		core.Text{ContentFunc: func() string { return file().Name }, MaxLines: 1,
+			EllipsizeMode: core.EllipsizeMiddle,
+			Style:         core.Style{FontFamily: monoFont, FontSize: 10, FontWeight: core.FontWeightBold, Color: c.text}},
+		core.View{Style: core.Style{Direction: core.Row, Gap: 4, Wrap: core.Wrap}, Children: []core.Node{
+			tag(cx, ext, c.accent),
+			tag(cx, func() string { return format.Bytes(file().Size) }, c.surface),
+			tag(cx, date, c.surface),
+		}},
+	}}
 }
 
-func (s *state) fileRow(cx *core.Scope, groupAt func() (db.DuplicateGroup, bool), file func() db.FileRecord) core.Node {
+func tag(cx *core.Scope, content func() string, background core.Color) core.Node {
+	c := colorsOf(cx)
+	return core.View{Style: core.Style{
+		Padding: core.Symmetric(2, 4), Background: background,
+		BorderWidth: 1, BorderColor: c.border,
+	}, Children: []core.Node{core.Text{ContentFunc: content, Style: core.Style{FontFamily: monoFont,
+		FontSize: 7, FontWeight: core.FontWeightBold, Color: c.text}}}}
+}
+
+func previewGradient(md5 string) core.Gradient {
+	palettes := [][]core.Color{
+		{core.RGB(0x2E1065), core.RGB(0x9333EA), core.RGB(0xF59E0B)},
+		{core.RGB(0x0F2027), core.RGB(0x203A43), core.RGB(0x2C5364)},
+		{core.RGB(0xFF512F), core.RGB(0xDD2476), core.RGB(0xFF8A00)},
+		{core.RGB(0x11998E), core.RGB(0x38EF7D)},
+		{core.RGB(0x1E3A8A), core.RGB(0x3B82F6), core.RGB(0xF472B6)},
+	}
+	index := 0
+	for i := 0; i < len(md5) && i < 3; i++ {
+		index = index*16 + int(md5[i]%16)
+	}
+	return core.LinearGradient(135, palettes[index%len(palettes)]...)
+}
+
+func (s *state) fileRow(cx *core.Scope, groupAt func() (db.DuplicateGroup, bool), file func() db.FileRecord, index func() int) core.Node {
 	c := colorsOf(cx)
 	groupSelf := func() (db.FileRecord, bool) {
 		group, ok := groupAt()
@@ -307,90 +292,76 @@ func (s *state) fileRow(cx *core.Scope, groupAt func() (db.DuplicateGroup, bool)
 		group, ok := groupAt()
 		return ok && s.keep.Get()[group.MD5] == file().Path
 	}
-	showFolder := func() bool {
-		group, ok := groupAt()
-		return ok && hasDuplicateNames(group)
-	}
-	onChange := func(bool) {
+	onChange := func() {
 		group, ok := groupAt()
 		if ok && (!groupHasSelf() || isSelf()) {
 			s.setKeep(group.MD5, file().Path)
 		}
 	}
-	deletePending := func() bool {
-		group, ok := groupAt()
-		if !ok {
-			return false
-		}
-		keep := s.keep.Get()[group.MD5]
-		return keep != "" && keep != file().Path
+	label := s.t(i18n.KeyOriginalCopy)
+	if index() > 0 {
+		label = s.tf(i18n.KeyDuplicateN, index())
 	}
-	rowStyle := func() core.Style {
-		style := core.Style{
-			Direction: core.Row, AlignItems: core.AlignCenter, Gap: 10,
-			CornerRadius: 8, Padding: core.Symmetric(9, 10),
-		}
-		if checked() {
-			style.Background = c.surfaceHover
-		}
-		if deletePending() {
-			style.Opacity = core.Alpha(0.65)
-		}
-		if groupHasSelf() && !isSelf() {
-			style.Opacity = core.Alpha(0.45)
-		}
-		if s.busy.Get() || s.scanning.Get() {
-			style.Opacity = core.Alpha(0.6)
-		}
-		return style
+	status := s.t(i18n.KeyDeleteBadge)
+	if checked() {
+		status = s.t(i18n.KeyKeepBadge)
 	}
-	return base.Radio{
-		Checked:  checked,
-		OnChange: onChange,
+	return base.Button{
+		OnPress: func(core.PressEvent) { onChange() },
 		Disabled: func() bool {
 			return s.busy.Get() || s.scanning.Get() || (groupHasSelf() && !isSelf())
 		},
-		Label:     file().Name + ", " + displayPath(filepath.Dir(file().Path), s.home),
-		TestID:    "keep:" + file().Path,
-		StyleFunc: rowStyle,
+		Label:    file().Name + ", " + file().Path,
+		TestID:   "keep:" + file().Path,
+		Selected: checked,
+		StyleFunc: func() core.Style {
+			background := c.surface
+			if checked() {
+				background = c.successSoft
+			}
+			style := core.Style{
+				Direction: core.Row, AlignItems: core.AlignCenter, Gap: 8,
+				Padding: core.Symmetric(7, 6), Background: background,
+				Borders: core.Edges{Bottom: 1}, BorderColor: c.border,
+				Hover: &core.Style{Background: c.surfaceHover},
+			}
+			if groupHasSelf() && !isSelf() {
+				style.Opacity = core.Alpha(0.45)
+			}
+			if s.busy.Get() || s.scanning.Get() {
+				style.Opacity = core.Alpha(0.6)
+			}
+			return style
+		},
 		Children: []core.Node{
-			radioDot(cx, checked),
 			core.View{Style: core.Style{
-				Direction: core.Column, Gap: 1, FlexGrow: 1, FlexShrink: 1, MinWidth: core.Pt(0),
+				FlexGrow: 1, FlexBasis: core.Pt(0), MinWidth: core.Pt(0), Direction: core.Column, Gap: 1,
 			}, Children: []core.Node{
-				core.Text{ContentFunc: func() string { return file().Name }, MaxLines: 1,
-					EllipsizeMode: core.EllipsizeMiddle, StyleFunc: func() core.Style {
-						weight := core.FontWeightNormal
-						color := c.text
-						decoration := core.TextDecorationNone
-						if checked() {
-							weight = core.FontWeightSemibold
-						}
-						if deletePending() {
-							color = c.muted
-							decoration = core.TextDecorationLineThrough
-						}
-						return core.Style{
-							FontSize: 15, FontWeight: weight, Color: color, TextDecoration: decoration,
-						}
-					}},
-				core.Show{When: showFolder, Then: func(*core.Scope) core.Node {
-					return core.View{TestID: "file-dir:" + file().Path, Children: []core.Node{
-						core.Text{Content: displayPath(filepath.Dir(file().Path), s.home), MaxLines: 1,
-							EllipsizeMode: core.EllipsizeMiddle,
-							Style:         core.Style{FontSize: 11, Color: c.muted}},
-					}}
+				core.Text{Content: strings.ToUpper(label), Style: core.Style{FontFamily: monoFont,
+					FontSize: 8, FontWeight: core.FontWeightBold, Color: c.text}},
+				core.View{TestID: "file-dir:" + file().Path, Children: []core.Node{
+					core.Text{Content: displayPath(file().Path, s.home), MaxLines: 1,
+						EllipsizeMode: core.EllipsizeMiddle,
+						Style:         core.Style{FontFamily: monoFont, FontSize: 8, Color: c.muted}},
 				}},
 			}},
-			core.Show{When: isSelf, Then: func(*core.Scope) core.Node {
-				return line(s.t(i18n.KeyRunning), 12, core.FontWeightNormal, c.success)
-			}},
-			core.Show{When: func() bool { return checked() && !isSelf() }, Then: func(*core.Scope) core.Node {
-				return line(s.t(i18n.KeyKeepBadge), 12, core.FontWeightNormal, c.muted)
-			}},
-			core.Show{When: deletePending, Then: func(*core.Scope) core.Node {
-				return line(s.t(i18n.KeyDeleteBadge), 12, core.FontWeightMedium, c.danger)
-			}},
+			core.Text{Content: strings.ToUpper(status), Style: core.Style{FontFamily: monoFont,
+				FontSize: 8, FontWeight: core.FontWeightBold, Color: c.text, TextAlign: core.TextAlignEnd}},
+			statusBox(cx, checked),
 		},
 	}
+}
+
+func speedText(bytesPerSecond float64) string {
+	return format.Bytes(int64(bytesPerSecond)) + "/s"
+}
+
+func formatDuration(d time.Duration) string {
+	if d < time.Minute {
+		return fmt.Sprintf("%ds", int(d.Seconds()))
+	}
+	if d < time.Hour {
+		return fmt.Sprintf("%d:%02d", int(d.Minutes()), int(d.Seconds())%60)
+	}
+	return fmt.Sprintf("%d:%02d:%02d", int(d.Hours()), int(d.Minutes())%60, int(d.Seconds())%60)
 }

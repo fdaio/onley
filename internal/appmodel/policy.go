@@ -8,14 +8,19 @@ type KeepPolicy uint8
 const (
 	KeepNewest KeepPolicy = iota
 	KeepOldest
+	KeepByPath
 )
 
 // String returns the storage value for p.
 func (p KeepPolicy) String() string {
-	if p == KeepOldest {
+	switch p {
+	case KeepOldest:
 		return "oldest"
+	case KeepByPath:
+		return "path"
+	default:
+		return "newest"
 	}
-	return "newest"
 }
 
 // ParseKeepPolicy parses a stored policy, falling back to newest.
@@ -25,6 +30,8 @@ func ParseKeepPolicy(s string) (KeepPolicy, bool) {
 		return KeepNewest, true
 	case "oldest":
 		return KeepOldest, true
+	case "path":
+		return KeepByPath, true
 	default:
 		return KeepNewest, false
 	}
@@ -39,9 +46,12 @@ func ChooseKeep(group db.DuplicateGroup, p KeepPolicy) db.FileRecord {
 	chosen := group.Files[0]
 	for _, file := range group.Files[1:] {
 		var better bool
-		if p == KeepOldest {
+		switch p {
+		case KeepOldest:
 			better = file.Mtime < chosen.Mtime || (file.Mtime == chosen.Mtime && file.Path < chosen.Path)
-		} else {
+		case KeepByPath:
+			better = file.Path < chosen.Path
+		default:
 			better = file.Mtime > chosen.Mtime || (file.Mtime == chosen.Mtime && file.Path < chosen.Path)
 		}
 		if better {

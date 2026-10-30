@@ -28,6 +28,13 @@ func TestChooseKeepOldest(t *testing.T) {
 	}
 }
 
+func TestChooseKeepByPath(t *testing.T) {
+	got := ChooseKeep(policyGroup(), KeepByPath)
+	if got.Path != "/a-new" {
+		t.Errorf("by path = %q, want /a-new", got.Path)
+	}
+}
+
 func TestChooseKeepTieUsesPath(t *testing.T) {
 	group := db.DuplicateGroup{MD5: "a", Files: []db.FileRecord{
 		{Path: "/b", Mtime: 100},
@@ -42,7 +49,7 @@ func TestChooseKeepTieUsesPath(t *testing.T) {
 }
 
 func TestParseKeepPolicy(t *testing.T) {
-	for _, policy := range []KeepPolicy{KeepNewest, KeepOldest} {
+	for _, policy := range []KeepPolicy{KeepNewest, KeepOldest, KeepByPath} {
 		got, ok := ParseKeepPolicy(policy.String())
 		if !ok || got != policy {
 			t.Errorf("ParseKeepPolicy(%q) = %v, %v", policy.String(), got, ok)

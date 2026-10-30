@@ -2,27 +2,28 @@ package main
 
 import "github.com/oneo-me/nsgo/core"
 
-// midnightTheme is the Midnight Terminal palette. The light palette is the
-// same, because the client always shows the dark appearance.
-func midnightTheme() *core.Theme {
+// brutalistTheme is the black, paper and pink palette of the redesigned app.
+// The light and dark palettes are the same, because the client always shows
+// the light appearance.
+func brutalistTheme() *core.Theme {
 	palette := core.Palette{
-		Background:     core.RGB(0x111318),
-		Surface:        core.RGB(0x191D24),
-		SurfaceHover:   core.RGB(0x252B35),
-		SurfacePressed: core.RGB(0x2E3642),
-		Border:         core.RGB(0x343C49),
-		Text:           core.RGB(0xE6E8EC),
-		TextMuted:      core.RGB(0x858D9B),
-		Accent:         core.RGB(0x8BA4C1),
-		AccentHover:    core.RGB(0x9FB6CF),
-		AccentPressed:  core.RGB(0x7A93AE),
-		AccentText:     core.RGB(0x111318),
-		Danger:         core.RGB(0xD98282),
-		Warning:        core.RGB(0xD8B477),
-		Success:        core.RGB(0x8BC7A1),
-		Selection:      core.RGBA(0x8BA4C1, 0.24),
-		Focus:          core.RGBA(0x8BA4C1, 0.8),
-		Scrollbar:      core.RGBA(0x858D9B, 0.35),
+		Background:     core.RGB(0xF4F1EB),
+		Surface:        core.RGB(0xFFFFFF),
+		SurfaceHover:   core.RGB(0xEEEAE2),
+		SurfacePressed: core.RGB(0xE3DED4),
+		Border:         core.RGB(0x111111),
+		Text:           core.RGB(0x111111),
+		TextMuted:      core.RGB(0x6B6B6B),
+		Accent:         core.RGB(0xFF00A0),
+		AccentHover:    core.RGB(0xFF33B3),
+		AccentPressed:  core.RGB(0xD90088),
+		AccentText:     core.RGB(0x111111),
+		Danger:         core.RGB(0xFF00A0),
+		Warning:        core.RGB(0xFFB000),
+		Success:        core.RGB(0x1F6B3A),
+		Selection:      core.RGBA(0xFF00A0, 0.18),
+		Focus:          core.RGBA(0xFF00A0, 0.8),
+		Scrollbar:      core.RGBA(0x111111, 0.6),
 	}
-	return &core.Theme{Light: palette, Dark: palette, Radius: 8}
+	return &core.Theme{Light: palette, Dark: palette, Radius: 0}
 }
