@@ -637,6 +637,25 @@ h1 {
   .button-light { padding: 0 12px; }
 }
 
+html[lang="zh-CN"] body.home { line-height: 1.75; }
+
+html[lang="zh-CN"] h1 {
+  font-size: clamp(2.6rem, 4.6vw, 4.2rem);
+  letter-spacing: 0;
+  line-height: 1.08;
+}
+
+html[lang="zh-CN"] .site-nav,
+html[lang="zh-CN"] .header-actions { letter-spacing: 0; }
+
+html[lang="zh-CN"] .eyebrow-pill,
+html[lang="zh-CN"] .eyebrow,
+html[lang="zh-CN"] .footer-col h2 { letter-spacing: 0.03em; }
+
+@media (max-width: 560px) {
+  html[lang="zh-CN"] h1 { font-size: clamp(2.2rem, 10vw, 3rem); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .button,
