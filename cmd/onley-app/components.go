@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/oneo-me/nsgo/base"
@@ -122,7 +123,35 @@ func appButton(cx *core.Scope, label, testID string, kind buttonKind, disabled f
 
 func (s *state) policySegment(cx *core.Scope, label, testID string, policy appmodel.KeepPolicy) core.Node {
 	c := colorsOf(cx)
-	selected := func() bool { return s.keepPolicy.Get() == policy }
+	// Auto keep is a one-shot action, so only the last applied policy can stay
+	// highlighted. A stored policy alone does not mean it was applied, and a
+	// tie in modification times can match both policies at once.
+	selected := func() bool {
+		if s.keepPolicy.Get() != policy {
+			return false
+		}
+		groups := s.groups.Get()
+		if len(groups) == 0 {
+			return false
+		}
+		keep := s.keep.Get()
+		for _, group := range groups {
+			path := keep[group.MD5]
+			if path == "" {
+				return false
+			}
+			if self, found := appmodel.ProtectedFile(group, s.selfPath); found {
+				if !selfpath.Same(path, self.Path) {
+					return false
+				}
+				continue
+			}
+			if path != appmodel.ChooseKeep(group, policy).Path {
+				return false
+			}
+		}
+		return true
+	}
 	return base.Button{
 		OnPress:  func(core.PressEvent) { s.applyKeepPolicy(policy) },
 		Disabled: func() bool { return s.scanning.Get() || s.busy.Get() || len(s.groups.Get()) == 0 },
@@ -244,6 +273,19 @@ func (s *state) groupRow(cx *core.Scope, row core.ListRow) core.Node {
 	}
 }
 
+// hasDuplicateNames reports whether two copies in the group share a file name.
+// The folder is shown only in that case.
+func hasDuplicateNames(group db.DuplicateGroup) bool {
+	seen := make(map[string]bool, len(group.Files))
+	for _, file := range group.Files {
+		if seen[file.Name] {
+			return true
+		}
+		seen[file.Name] = true
+	}
+	return false
+}
+
 func (s *state) fileRow(cx *core.Scope, groupAt func() (db.DuplicateGroup, bool), file func() db.FileRecord) core.Node {
 	c := colorsOf(cx)
 	groupSelf := func() (db.FileRecord, bool) {
@@ -264,6 +306,10 @@ func (s *state) fileRow(cx *core.Scope, groupAt func() (db.DuplicateGroup, bool)
 	checked := func() bool {
 		group, ok := groupAt()
 		return ok && s.keep.Get()[group.MD5] == file().Path
+	}
+	showFolder := func() bool {
+		group, ok := groupAt()
+		return ok && hasDuplicateNames(group)
 	}
 	onChange := func(bool) {
 		group, ok := groupAt()
@@ -304,26 +350,36 @@ func (s *state) fileRow(cx *core.Scope, groupAt func() (db.DuplicateGroup, bool)
 		Disabled: func() bool {
 			return s.busy.Get() || s.scanning.Get() || (groupHasSelf() && !isSelf())
 		},
-		Label:     file().Name,
+		Label:     file().Name + ", " + displayPath(filepath.Dir(file().Path), s.home),
 		TestID:    "keep:" + file().Path,
 		StyleFunc: rowStyle,
 		Children: []core.Node{
 			radioDot(cx, checked),
-			core.Text{ContentFunc: func() string { return file().Name }, StyleFunc: func() core.Style {
-				weight := core.FontWeightNormal
-				color := c.text
-				decoration := core.TextDecorationNone
-				if checked() {
-					weight = core.FontWeightSemibold
-				}
-				if deletePending() {
-					color = c.muted
-					decoration = core.TextDecorationLineThrough
-				}
-				return core.Style{
-					FlexGrow: 1, FlexShrink: 1, MinWidth: core.Pt(0),
-					FontSize: 15, FontWeight: weight, Color: color, TextDecoration: decoration,
-				}
+			core.View{Style: core.Style{
+				Direction: core.Column, Gap: 1, FlexGrow: 1, FlexShrink: 1, MinWidth: core.Pt(0),
+			}, Children: []core.Node{
+				core.Text{ContentFunc: func() string { return file().Name }, StyleFunc: func() core.Style {
+					weight := core.FontWeightNormal
+					color := c.text
+					decoration := core.TextDecorationNone
+					if checked() {
+						weight = core.FontWeightSemibold
+					}
+					if deletePending() {
+						color = c.muted
+						decoration = core.TextDecorationLineThrough
+					}
+					return core.Style{
+						FontSize: 15, FontWeight: weight, Color: color, TextDecoration: decoration,
+					}
+				}},
+				core.Show{When: showFolder, Then: func(*core.Scope) core.Node {
+					return core.View{TestID: "file-dir:" + file().Path, Children: []core.Node{
+						core.Text{Content: displayPath(filepath.Dir(file().Path), s.home), MaxLines: 1,
+							EllipsizeMode: core.EllipsizeMiddle,
+							Style:         core.Style{FontSize: 11, Color: c.muted}},
+					}}
+				}},
 			}},
 			core.Show{When: isSelf, Then: func(*core.Scope) core.Node {
 				return line(s.t(i18n.KeyRunning), 12, core.FontWeightNormal, c.success)

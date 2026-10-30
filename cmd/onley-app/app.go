@@ -224,7 +224,7 @@ func (s *state) groupsPanel(cx *core.Scope) core.Node {
 				return groups[i].MD5
 			},
 			Row:           s.groupRow,
-			EstimatedSize: 150,
+			EstimatedSize: 170,
 			Gap:           12,
 			Style:         core.Style{FlexGrow: 1, MinHeight: core.Pt(0)},
 			Empty:         s.emptyState(cx),
@@ -269,7 +269,10 @@ func (s *state) bottomBar(cx *core.Scope) core.Node {
 				s.addFolderButton(cx),
 			}, appButton(cx, s.t(i18n.KeyRescan), "scan-button", buttonGhost, func() bool {
 				return disabled() || len(s.scanDirs.Get()) == 0
-			}, s.startScan))},
+			}, s.startScan),
+				appButton(cx, s.t(i18n.KeyClearChoices), "clear-choices", buttonGhost, func() bool {
+					return disabled() || len(s.keep.Get()) == 0
+				}, s.clearKeep))},
 			core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 12}, Children: []core.Node{
 				core.Text{Content: s.t(i18n.KeyPermanentHint), MaxLines: 2,
 					Style: core.Style{Width: core.Pt(220), FontSize: 11, Color: c.muted, TextAlign: core.TextAlignEnd}},
@@ -284,13 +287,27 @@ func (s *state) bottomBar(cx *core.Scope) core.Node {
 func (s *state) folderTag(cx *core.Scope, root string) core.Node {
 	c := colorsOf(cx)
 	return core.View{TestID: "folder:" + root, Style: core.Style{
-		Direction: core.Row, AlignItems: core.AlignCenter,
+		Direction: core.Row, AlignItems: core.AlignCenter, Gap: 2,
 		MaxWidth: core.Pt(220), MinWidth: core.Pt(0), Overflow: core.Hidden,
 		Background: c.background, BorderWidth: 1, BorderColor: c.border,
-		CornerRadius: 999, Padding: core.Symmetric(4, 10),
+		CornerRadius: 999, Padding: core.Symmetric(3, 6),
 	}, Children: []core.Node{
 		core.Text{Content: displayPath(root, s.home), MaxLines: 1, EllipsizeMode: core.EllipsizeTail,
-			Style: core.Style{MaxWidth: core.Pt(198), MinWidth: core.Pt(0), FontSize: 12, Color: c.muted}},
+			Style: core.Style{MaxWidth: core.Pt(178), MinWidth: core.Pt(0), FontSize: 12, Color: c.muted}},
+		base.Button{
+			OnPress:  func(core.PressEvent) { s.removeFolder(root) },
+			Disabled: func() bool { return s.scanning.Get() || s.busy.Get() },
+			Label:    s.t(i18n.KeyRemove),
+			TestID:   "remove-folder:" + root,
+			Style: core.Style{
+				Width: core.Pt(18), Height: core.Pt(18), CornerRadius: 9,
+				AlignItems: core.AlignCenter, JustifyContent: core.JustifyCenter,
+				Hover:    &core.Style{Background: c.surfaceHover},
+				Active:   &core.Style{Background: c.surfacePressed},
+				Disabled: &core.Style{Opacity: core.Alpha(0.45)},
+			},
+			Children: []core.Node{line("×", 12, core.FontWeightBold, c.muted)},
+		},
 	}}
 }
 
@@ -438,7 +455,13 @@ func (s *state) confirmDialog(cx *core.Scope) core.Node {
 }
 
 func displayPath(path, home string) string {
-	if home != "" && strings.HasPrefix(path, home+string(filepath.Separator)) {
+	if home == "" {
+		return path
+	}
+	if path == home {
+		return "~"
+	}
+	if strings.HasPrefix(path, home+string(filepath.Separator)) {
 		return "~" + path[len(home):]
 	}
 	return path
