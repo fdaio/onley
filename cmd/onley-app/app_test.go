@@ -435,6 +435,47 @@ func TestDeleteCleansRecordOfMissingFile(t *testing.T) {
 	app.WaitUntil(5*time.Second, func() bool { return app.Find("id:group-summary").Text == "0" })
 }
 
+func TestDeletePermissionHint(t *testing.T) {
+	dir := t.TempDir()
+	content := strings.Repeat("a", 4096)
+	writeFile(t, dir, "a.bin", content)
+	writeFile(t, dir, "b.bin", content)
+	store := newStore(t)
+	scanInto(t, store, dir)
+	app := startApp(t, store, dir, nil)
+
+	if err := os.Chmod(dir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+
+	app.Press("id:delete-files")
+	app.Press("id:delete-confirm")
+	app.WaitFor("text:permission denied", 5*time.Second)
+	for _, name := range []string{"a.bin", "b.bin"} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Errorf("%s was removed despite the permission error: %v", name, err)
+		}
+	}
+}
+
+func TestScanPermissionHint(t *testing.T) {
+	dir := t.TempDir()
+	locked := filepath.Join(dir, "locked")
+	if err := os.Mkdir(locked, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, locked, "a.bin", "locked")
+	if err := os.Chmod(locked, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(locked, 0o755) })
+
+	app := startApp(t, newStore(t), dir, nil)
+	app.Press("id:scan-button")
+	app.WaitFor("text:could not be read because of permissions", 10*time.Second)
+}
+
 func setMtime(t *testing.T, path string, unix int64) {
 	t.Helper()
 	tm := time.Unix(unix, 0)
