@@ -63,6 +63,18 @@ func startAppWithSelf(t *testing.T, store *db.DB, dir string, scan func(context.
 	return nsgotest.Start(t, Root(cfg), nsgotest.Size(1080, 720))
 }
 
+func startAppWithStorage(t *testing.T, store *db.DB, dir string, storage map[string]string) *nsgotest.App {
+	t.Helper()
+	cfg := Config{
+		Store:      store,
+		DBPath:     filepath.Join(t.TempDir(), "index.db"),
+		Home:       t.TempDir(),
+		DefaultDir: dir,
+		Workers:    2,
+	}
+	return nsgotest.Start(t, Root(cfg), nsgotest.Size(1080, 720), nsgotest.Storage(storage))
+}
+
 func addFolderViaDialog(t *testing.T, app *nsgotest.App, path string) {
 	t.Helper()
 	app.Press("id:add-folder")
@@ -535,6 +547,119 @@ func TestCancelScan(t *testing.T) {
 	app.WaitFor("text:Scan canceled. The partial index is kept.", 5*time.Second)
 	if app.Exists("id:cancel-scan") {
 		t.Errorf("scan controls still visible after cancel")
+	}
+}
+
+func TestFileRowsShowFolder(t *testing.T) {
+	first := t.TempDir()
+	second := t.TempDir()
+	content := strings.Repeat("a", 4096)
+	one := writeFile(t, first, "photo.jpg", content)
+	two := writeFile(t, second, "photo.jpg", content)
+	store := newStore(t)
+	scanInto(t, store, first)
+	scanInto(t, store, second)
+
+	app := startApp(t, store, first, nil)
+	for path, want := range map[string]string{one: first, two: second} {
+		row := app.Find("id:file-dir:" + path)
+		if row == nil {
+			t.Fatalf("folder label missing for %s\n%s", path, app.Dump())
+		}
+		if got := row.Children[0].Text; got != want {
+			t.Errorf("folder for %s = %q, want %q", path, got, want)
+		}
+	}
+}
+
+func TestFileRowsHideFolderForDistinctNames(t *testing.T) {
+	dir := t.TempDir()
+	content := strings.Repeat("a", 4096)
+	one := writeFile(t, dir, "a.bin", content)
+	two := writeFile(t, dir, "b.bin", content)
+	store := newStore(t)
+	scanInto(t, store, dir)
+
+	app := startApp(t, store, dir, nil)
+	for _, path := range []string{one, two} {
+		if app.Exists("id:file-dir:" + path) {
+			t.Errorf("folder label shown for distinct names\n%s", app.Dump())
+		}
+	}
+}
+
+func TestAutoKeepHighlightMatchesChoices(t *testing.T) {
+	dir := t.TempDir()
+	old := writeFile(t, dir, "a1.bin", strings.Repeat("a", 4096))
+	newest := writeFile(t, dir, "a2.bin", strings.Repeat("a", 4096))
+	setMtime(t, old, 100)
+	setMtime(t, newest, 200)
+	store := newStore(t)
+	scanInto(t, store, dir)
+
+	app := startAppWithStorage(t, store, dir, map[string]string{"keep_policy": "newest"})
+	if app.Find("id:policy-newest").Props.Selected {
+		t.Fatalf("newest is highlighted before it is applied\n%s", app.Dump())
+	}
+	app.Press("id:policy-newest")
+	app.WaitFor("text:Delete 1 file", 2*time.Second)
+	if !app.Find("id:policy-newest").Props.Selected {
+		t.Errorf("newest is not highlighted after it is applied\n%s", app.Dump())
+	}
+
+	app.Press("id:keep:" + old)
+	app.WaitUntil(2*time.Second, func() bool {
+		return !app.Find("id:policy-newest").Props.Selected &&
+			!app.Find("id:policy-oldest").Props.Selected
+	})
+}
+
+func TestRemoveFolder(t *testing.T) {
+	first := t.TempDir()
+	second := t.TempDir()
+	app := startApp(t, newStore(t), first, nil)
+	addFolderViaDialog(t, app, second)
+
+	app.Press("id:remove-folder:" + second)
+	app.WaitForGone("id:folder:"+second, 2*time.Second)
+	if !app.Exists("id:folder:" + first) {
+		t.Fatalf("first folder disappeared\n%s", app.Dump())
+	}
+
+	app.Press("id:remove-folder:" + first)
+	app.WaitForGone("id:folder:"+first, 2*time.Second)
+	if !app.Find("id:scan-button").Props.Disabled {
+		t.Errorf("rescan is enabled with no folders")
+	}
+	if app.Find("id:add-folder").Props.Disabled {
+		t.Errorf("add folder is disabled with no folders")
+	}
+}
+
+func TestClearChoices(t *testing.T) {
+	dir := t.TempDir()
+	keep := writeFile(t, dir, "a.bin", strings.Repeat("a", 4096))
+	writeFile(t, dir, "b.bin", strings.Repeat("a", 4096))
+	store := newStore(t)
+	scanInto(t, store, dir)
+
+	app := startApp(t, store, dir, nil)
+	if !app.Find("id:clear-choices").Props.Disabled {
+		t.Errorf("clear choices is enabled with no choices")
+	}
+	app.Press("id:keep:" + keep)
+	app.WaitFor("text:Delete 1 file", 2*time.Second)
+	if app.Find("id:clear-choices").Props.Disabled {
+		t.Errorf("clear choices is disabled with a choice")
+	}
+
+	app.Press("id:clear-choices")
+	app.WaitUntil(2*time.Second, func() bool {
+		return app.Find("id:delete-files").Props.Disabled &&
+			app.Find("id:delete-files").Props.Label == "Delete"
+	})
+	if app.Find("id:keep:" + keep).Props.Selected {
+		t.Errorf("keep choice is still selected after clear")
 	}
 }
 

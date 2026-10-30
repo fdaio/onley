@@ -376,6 +376,29 @@ func (s *state) addFolder(raw string) bool {
 	return true
 }
 
+// removeFolder drops a folder from the scan roots.
+func (s *state) removeFolder(path string) {
+	if s.scanning.Get() || s.busy.Get() {
+		return
+	}
+	roots := s.scanDirs.Get()
+	next := make([]string, 0, len(roots))
+	for _, root := range roots {
+		if root != path {
+			next = append(next, root)
+		}
+	}
+	s.scanDirs.Set(next)
+}
+
+// clearKeep drops every keep choice, so the delete plan becomes empty.
+func (s *state) clearKeep() {
+	if s.scanning.Get() || s.busy.Get() {
+		return
+	}
+	s.keep.Set(map[string]string{})
+}
+
 func (s *state) scanRootsLabel() string {
 	roots := s.scanDirs.Get()
 	switch len(roots) {

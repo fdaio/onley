@@ -75,8 +75,10 @@ The bottom bar holds the selected folders, and a folder inside another selected
 folder is merged into its parent before scanning. Merging uses absolute paths,
 so symlink aliases are not resolved. The header's keep policy selects the newest
 or oldest file in every group by modification time; the delete button then shows
-the resulting count and opens the confirmation. The policy never deletes
-without confirmation. It uses the same `~/.onley/local.db` index as the CLI.
+the resulting count and opens the confirmation. When two copies share a file
+name, each row shows its folder below the name, so the rows stay distinct.
+Folder tags have a remove control, and Clear choices drops every keep choice.
+The policy never deletes without confirmation. It uses the same `~/.onley/local.db` index as the CLI.
 Release builds of the macOS app are signed with a Developer ID and notarized.
 Local `make app` builds are not signed. Windows code signing is in progress;
 Linux packages remain unsigned; see the note below before opening one.

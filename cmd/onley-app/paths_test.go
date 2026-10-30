@@ -30,6 +30,9 @@ func TestDisplayPath(t *testing.T) {
 	if got, want := displayPath(downloads, home), "~"+string(filepath.Separator)+"Downloads"; got != want {
 		t.Errorf("displayPath = %q, want %q", got, want)
 	}
+	if got := displayPath(home, home); got != "~" {
+		t.Errorf("displayPath home = %q, want ~", got)
+	}
 	other := filepath.Join(string(filepath.Separator), "Volumes", "data")
 	if got := displayPath(other, home); got != other {
 		t.Errorf("displayPath = %q, want unchanged", got)
