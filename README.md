@@ -24,7 +24,7 @@ Website: https://fdaio.github.io/onley/
 Download a release archive for your platform, or use the [download page](https://fdaio.github.io/onley/download.html):
 
 `<version>` is the release number without the leading `v`, for example
-`0.2.9`.
+`0.2.10`.
 
 ```sh
 # macOS (Apple silicon)
@@ -90,9 +90,9 @@ Build and open it on macOS:
 ```sh
 make app
 # Apple silicon
-open cmd/onley-app/dist/Onley-0.2.9-macos_arm64/Onley.app
+open cmd/onley-app/dist/Onley-0.2.10-macos_arm64/Onley.app
 # Intel
-open cmd/onley-app/dist/Onley-0.2.9-macos_x64/Onley.app
+open cmd/onley-app/dist/Onley-0.2.10-macos_x64/Onley.app
 ```
 
 Building the app needs Go 1.27.3 and Xcode; NSGo is pinned in `go.mod`.

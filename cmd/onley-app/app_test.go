@@ -823,15 +823,33 @@ func TestScrollToLastGroup(t *testing.T) {
 }
 
 func TestNativeScreenshot(t *testing.T) {
-	dir := t.TempDir()
-	keep := writeFile(t, dir, "a.bin", strings.Repeat("a", 4096))
-	writeFile(t, dir, "b.bin", strings.Repeat("a", 4096))
-	writeFile(t, dir, "c.bin", "unique")
+	home := t.TempDir()
+	downloads := filepath.Join(home, "Downloads")
+	archive := filepath.Join(downloads, "archive")
+	versions := filepath.Join(downloads, "versions")
+	for _, dir := range []string{archive, versions} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	team := writeFile(t, downloads, "team-photo.jpg", strings.Repeat("photo", 4096))
+	teamCopy := writeFile(t, versions, "team-photo copy.jpg", strings.Repeat("photo", 4096))
+	report := writeFile(t, downloads, "annual-report.pdf", strings.Repeat("report", 4096))
+	reportCopy := writeFile(t, archive, "annual-report copy.pdf", strings.Repeat("report", 4096))
+	setMtime(t, team, 100)
+	setMtime(t, report, 100)
+	setMtime(t, teamCopy, 200)
+	setMtime(t, reportCopy, 200)
 	store := newStore(t)
-	scanInto(t, store, dir)
+	scanInto(t, store, downloads)
 
-	app := startApp(t, store, dir, nil)
-	app.Press("id:keep:" + keep)
-	app.WaitFor("text:REVIEW & DELETE (1 FILE)", 2*time.Second)
+	cfg := Config{
+		Store:      store,
+		DBPath:     filepath.Join(t.TempDir(), "index.db"),
+		Home:       home,
+		DefaultDir: downloads,
+		Workers:    2,
+	}
+	app := nsgotest.Start(t, Root(cfg), nsgotest.Size(1080, 720))
 	app.Screenshot("onley-main")
 }
