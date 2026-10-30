@@ -4,9 +4,14 @@
   <img src="logo.png" alt="onley logo" width="200">
 </p>
 
+<p align="center">
+  <a href="README.md">English</a> ·
+  <a href="README_CN.md">简体中文</a>
+</p>
+
 A local file deduplication tool. Indexes files by MD5, finds duplicates, and lets you clean them up interactively — on a single machine or across multiple machines.
 
-Website: https://fdaio.github.io/onley/
+Website: https://fdaio.github.io/onley/ · [中文](https://fdaio.github.io/onley/index-zh.html)
 
 ## Features
 
