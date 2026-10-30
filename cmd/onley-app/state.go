@@ -52,6 +52,7 @@ type state struct {
 	selfPath   string
 
 	groups       *core.Signal[[]db.DuplicateGroup]
+	scoped       *core.Signal[[]db.DuplicateGroup]
 	visible      *core.Signal[[]db.DuplicateGroup]
 	summary      *core.Signal[appmodel.Summary]
 	indexed      *core.Signal[int]
@@ -125,6 +126,7 @@ func newState(cx *core.Scope, cfg Config) *state {
 		defaultDir:   defaultDir,
 		selfPath:     selfPath,
 		groups:       core.NewSignalFunc(cx, []db.DuplicateGroup{}, nil),
+		scoped:       core.NewSignalFunc(cx, []db.DuplicateGroup{}, nil),
 		visible:      core.NewSignalFunc(cx, []db.DuplicateGroup{}, nil),
 		summary:      core.NewSignal(cx, appmodel.Summary{}),
 		indexed:      core.NewSignal(cx, 0),
@@ -221,7 +223,6 @@ func (s *state) load() ([]db.DuplicateGroup, int, error) {
 
 func (s *state) apply(groups []db.DuplicateGroup, total int) {
 	s.groups.Set(groups)
-	s.summary.Set(appmodel.Summarize(groups))
 	s.indexed.Set(total)
 	s.refreshVisible()
 	s.applyKeepPolicy(s.keepPolicy.Get())
@@ -230,13 +231,21 @@ func (s *state) apply(groups []db.DuplicateGroup, total int) {
 // refreshVisible applies the category, folder and search filters.
 func (s *state) refreshVisible() {
 	groups := s.groups.Get()
+	roots := s.scanDirs.Get()
+	scoped := make([]db.DuplicateGroup, 0, len(groups))
+	for _, group := range groups {
+		if len(group.Files) > 0 && groupInRoots(group, roots) {
+			scoped = append(scoped, group)
+		}
+	}
+
+	s.scoped.Set(scoped)
+	s.summary.Set(appmodel.Summarize(scoped))
+
 	cat := s.category.Get()
 	query := strings.ToLower(strings.TrimSpace(s.query.Get()))
-	out := make([]db.DuplicateGroup, 0, len(groups))
-	for _, group := range groups {
-		if len(group.Files) == 0 {
-			continue
-		}
+	out := make([]db.DuplicateGroup, 0, len(scoped))
+	for _, group := range scoped {
 		if cat != categoryAll && cat != categorySearch && fileCategory(group.Files[0].Name) != cat {
 			continue
 		}
@@ -286,7 +295,7 @@ func (s *state) refreshAsync(after func()) {
 }
 
 func (s *state) plan() appmodel.Plan {
-	return appmodel.BuildPlan(s.groups.Get(), s.keep.Get(), s.selfPath)
+	return appmodel.BuildPlan(s.scoped.Get(), s.keep.Get(), s.selfPath)
 }
 
 func (s *state) setKeep(md5, path string) {
@@ -394,6 +403,7 @@ func (s *state) addFolder(raw string) bool {
 	roots := append([]string(nil), s.scanDirs.Get()...)
 	roots = append(roots, abs)
 	s.scanDirs.Set(appmodel.MergeRoots(roots))
+	s.refreshVisible()
 	s.scanPath.Set("")
 	s.message.Set("")
 	return true
@@ -415,6 +425,7 @@ func (s *state) removeFolder(path string) {
 	if s.activeRoot.Get() == path {
 		s.setActiveRoot("")
 	}
+	s.refreshVisible()
 }
 
 // clearKeep drops every keep choice, so the delete plan becomes empty.
@@ -467,6 +478,7 @@ func (s *state) startScan() {
 		}
 	}
 	s.scanDirs.Set(roots)
+	s.refreshVisible()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel

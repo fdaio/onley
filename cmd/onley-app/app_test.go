@@ -293,6 +293,66 @@ func TestDropFolder(t *testing.T) {
 	}
 }
 
+func TestScanUsesRemainingFolder(t *testing.T) {
+	downloads := t.TempDir()
+	other := t.TempDir()
+	store := newStore(t)
+	roots := make(chan string, 1)
+	release := make(chan struct{})
+	scan := func(ctx context.Context, root string, _ *db.DB, _ int) <-chan scanner.Progress {
+		roots <- root
+		ch := make(chan scanner.Progress)
+		go func() {
+			select {
+			case <-release:
+			case <-ctx.Done():
+			}
+			close(ch)
+		}()
+		return ch
+	}
+
+	app := startAppWithSelf(t, store, downloads, scan, "")
+	addFolderViaDialog(t, app, other)
+	app.Press("id:remove-folder:" + downloads)
+	app.WaitForGone("id:folder:"+downloads, 2*time.Second)
+
+	app.Press("id:scan-button")
+	app.WaitFor("id:speed-gauge", 2*time.Second)
+	if got := <-roots; got != other {
+		t.Fatalf("scan root = %q, want %q", got, other)
+	}
+	if got := app.Find("id:scan-root").Text; got != other {
+		t.Errorf("scanning panel root = %q, want %q", got, other)
+	}
+	close(release)
+	app.WaitUntil(2*time.Second, func() bool { return !app.Exists("id:speed-gauge") })
+}
+
+func TestRemovedFolderGroupsHidden(t *testing.T) {
+	downloads := t.TempDir()
+	other := t.TempDir()
+	content := strings.Repeat("a", 4096)
+	file := writeFile(t, downloads, "a.bin", content)
+	writeFile(t, downloads, "b.bin", content)
+	store := newStore(t)
+	scanInto(t, store, downloads)
+
+	app := startApp(t, store, downloads, nil)
+	if !app.Exists("id:keep:" + file) {
+		t.Fatalf("downloads group missing before removal\n%s", app.Dump())
+	}
+	addFolderViaDialog(t, app, other)
+	app.Press("id:remove-folder:" + downloads)
+	app.WaitUntil(2*time.Second, func() bool { return !app.Exists("id:keep:" + file) })
+	if got := app.Find("id:group-summary").Text; got != "0" {
+		t.Errorf("group summary = %q, want 0", got)
+	}
+	if got := app.Find("id:delete-files").Props.Label; got != "REVIEW & DELETE (0 FILES)" {
+		t.Errorf("review label = %q, want no files", got)
+	}
+}
+
 func TestScanRejectsMissingFolder(t *testing.T) {
 	store := newStore(t)
 	app := startApp(t, store, t.TempDir(), nil)
