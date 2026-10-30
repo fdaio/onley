@@ -50,12 +50,17 @@ type state struct {
 	selfPath   string
 
 	groups       *core.Signal[[]db.DuplicateGroup]
+	visible      *core.Signal[[]db.DuplicateGroup]
 	summary      *core.Signal[appmodel.Summary]
+	indexed      *core.Signal[int]
 	scanDirs     *core.Signal[[]string]
 	scanPath     *core.Signal[string]
 	addingFolder *core.Signal[bool]
 	keep         *core.Signal[map[string]string]
 	keepPolicy   *core.Signal[appmodel.KeepPolicy]
+	category     *core.Signal[category]
+	query        *core.Signal[string]
+	activeRoot   *core.Signal[string]
 	scanning     *core.Signal[bool]
 	busy         *core.Signal[bool]
 	progress     *core.Signal[scanProgress]
@@ -100,7 +105,7 @@ func newState(cx *core.Scope, cfg Config) *state {
 			lang = savedLang
 		}
 	}
-	policy := appmodel.KeepNewest
+	policy := appmodel.KeepOldest
 	if saved, ok := cx.Storage().GetItem("keep_policy"); ok {
 		if savedPolicy, ok := appmodel.ParseKeepPolicy(saved); ok {
 			policy = savedPolicy
@@ -118,12 +123,17 @@ func newState(cx *core.Scope, cfg Config) *state {
 		defaultDir:   defaultDir,
 		selfPath:     selfPath,
 		groups:       core.NewSignalFunc(cx, []db.DuplicateGroup{}, nil),
+		visible:      core.NewSignalFunc(cx, []db.DuplicateGroup{}, nil),
 		summary:      core.NewSignal(cx, appmodel.Summary{}),
+		indexed:      core.NewSignal(cx, 0),
 		scanDirs:     core.NewSignalFunc(cx, []string{defaultDir}, nil),
 		scanPath:     core.NewSignal(cx, ""),
 		addingFolder: core.NewSignal(cx, false),
 		keep:         core.NewSignalFunc(cx, map[string]string{}, nil),
 		keepPolicy:   core.NewSignal(cx, policy),
+		category:     core.NewSignal(cx, categoryAll),
+		query:        core.NewSignal(cx, ""),
+		activeRoot:   core.NewSignal(cx, defaultDir),
 		scanning:     core.NewSignal(cx, false),
 		busy:         core.NewSignal(cx, false),
 		progress:     core.NewSignal(cx, scanProgress{}),
@@ -143,11 +153,11 @@ func newState(cx *core.Scope, cfg Config) *state {
 	case cfg.Store == nil:
 		s.message.Set(s.t(i18n.KeyIndexUnavailable))
 	default:
-		groups, err := s.load()
+		groups, total, err := s.load()
 		if err != nil {
 			s.message.Set(s.tf(i18n.KeyCannotReadIndex, err))
 		} else {
-			s.apply(groups)
+			s.apply(groups, total)
 		}
 	}
 	return s
@@ -163,10 +173,6 @@ func (s *state) tf(key i18n.Key, args ...any) string {
 
 func (s *state) fileCount(n int) string {
 	return i18n.FileCount(s.lang.Get(), n)
-}
-
-func (s *state) copyCount(n int) string {
-	return i18n.CopyCount(s.lang.Get(), n)
 }
 
 func (s *state) setLanguage(lang i18n.Lang) {
@@ -185,45 +191,63 @@ func (s *state) setNote(text string, success bool) {
 	s.noteSuccess.Set(success)
 }
 
-func (s *state) load() ([]db.DuplicateGroup, error) {
-	return s.cfg.Store.Duplicates()
+func (s *state) load() ([]db.DuplicateGroup, int, error) {
+	groups, err := s.cfg.Store.Duplicates()
+	if err != nil {
+		return nil, 0, err
+	}
+	total, _, err := s.cfg.Store.Stats()
+	if err != nil {
+		return nil, 0, err
+	}
+	return groups, total, nil
 }
 
-func (s *state) apply(groups []db.DuplicateGroup) {
+func (s *state) apply(groups []db.DuplicateGroup, total int) {
 	s.groups.Set(groups)
 	s.summary.Set(appmodel.Summarize(groups))
-	s.pruneKeep(groups)
+	s.indexed.Set(total)
+	s.refreshVisible()
+	s.applyKeepPolicy(s.keepPolicy.Get())
 }
 
-// pruneKeep drops choices for groups or files that are no longer in the index.
-func (s *state) pruneKeep(groups []db.DuplicateGroup) {
-	keep := s.keep.Get()
-	if len(keep) == 0 {
-		return
-	}
-	next := make(map[string]string, len(keep))
+// refreshVisible applies the category, folder and search filters.
+func (s *state) refreshVisible() {
+	groups := s.groups.Get()
+	cat := s.category.Get()
+	query := strings.ToLower(strings.TrimSpace(s.query.Get()))
+	out := make([]db.DuplicateGroup, 0, len(groups))
 	for _, group := range groups {
-		path, ok := keep[group.MD5]
-		if !ok {
+		if len(group.Files) == 0 {
 			continue
 		}
-		if self, found := appmodel.ProtectedFile(group, s.selfPath); found {
-			// A stale choice must not make the running executable a target.
-			if selfpath.Same(path, self.Path) {
-				next[group.MD5] = path
-			}
+		if cat != categoryAll && cat != categorySearch && fileCategory(group.Files[0].Name) != cat {
 			continue
 		}
-		for _, file := range group.Files {
-			if file.Path == path {
-				next[group.MD5] = path
-				break
-			}
+		if cat == categorySearch && query != "" && !groupMatches(group, query) {
+			continue
 		}
+		out = append(out, group)
 	}
-	if !maps.Equal(keep, next) {
-		s.keep.Set(next)
-	}
+	s.visible.Set(out)
+}
+
+func (s *state) setCategory(cat category) {
+	s.category.Set(cat)
+	s.refreshVisible()
+}
+
+func (s *state) setQuery(query string) {
+	s.query.Set(query)
+}
+
+func (s *state) applySearch() {
+	s.refreshVisible()
+}
+
+func (s *state) setActiveRoot(root string) {
+	s.activeRoot.Set(root)
+	s.refreshVisible()
 }
 
 func (s *state) refreshAsync(after func()) {
@@ -231,13 +255,13 @@ func (s *state) refreshAsync(after func()) {
 		return
 	}
 	go func() {
-		groups, err := s.load()
+		groups, total, err := s.load()
 		s.cx.Post(func() {
 			if err != nil {
 				s.message.Set(s.tf(i18n.KeyCannotReadIndex, err))
 				return
 			}
-			s.apply(groups)
+			s.apply(groups, total)
 			if after != nil {
 				after()
 			}
@@ -275,8 +299,8 @@ func (s *state) applyKeepPolicy(policy appmodel.KeepPolicy) {
 	}
 	if s.keepPolicy.Get() != policy {
 		s.keepPolicy.Set(policy)
-		_ = s.cx.Storage().SetItem("keep_policy", policy.String())
 	}
+	_ = s.cx.Storage().SetItem("keep_policy", policy.String())
 	next := make(map[string]string)
 	for _, group := range s.groups.Get() {
 		if self, found := appmodel.ProtectedFile(group, s.selfPath); found {
@@ -288,27 +312,6 @@ func (s *state) applyKeepPolicy(policy appmodel.KeepPolicy) {
 		}
 	}
 	s.keep.Set(next)
-}
-
-func (s *state) duplicateGroupTitle() string {
-	n := s.summary.Get().Groups
-	if n == 1 {
-		return s.tf(i18n.KeyDuplicateGroupTitle, n)
-	}
-	return s.tf(i18n.KeyDuplicateGroupsTitle, n)
-}
-
-func (s *state) duplicateSummary() string {
-	summary := s.summary.Get()
-	return s.tf(i18n.KeyDuplicateSummary, s.fileCount(summary.DuplicateFiles), format.Bytes(summary.Wasted))
-}
-
-func (s *state) deleteLabel() string {
-	n := len(s.plan().Targets)
-	if n == 0 {
-		return s.t(i18n.KeyDelete)
-	}
-	return s.tf(i18n.KeyDeleteCount, s.fileCount(n))
 }
 
 func (s *state) openAddFolder() {
@@ -389,6 +392,9 @@ func (s *state) removeFolder(path string) {
 		}
 	}
 	s.scanDirs.Set(next)
+	if s.activeRoot.Get() == path {
+		s.setActiveRoot("")
+	}
 }
 
 // clearKeep drops every keep choice, so the delete plan becomes empty.

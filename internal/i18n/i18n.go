@@ -145,6 +145,30 @@ const (
 	KeyCannotDeleteSelf     Key = "cannotDeleteSelf"
 	KeyFileMenu             Key = "fileMenu"
 	KeyEditMenu             Key = "editMenu"
+
+	KeyReclaimableSpace  Key = "reclaimableSpace"
+	KeyAllCopies         Key = "allCopies"
+	KeyImages            Key = "images"
+	KeyVideos            Key = "videos"
+	KeyDocuments         Key = "documents"
+	KeyArchives          Key = "archives"
+	KeySystem            Key = "system"
+	KeySearch            Key = "search"
+	KeySourceFolders     Key = "sourceFolders"
+	KeyAllFolders        Key = "allFolders"
+	KeyDropDirectory     Key = "dropDirectory"
+	KeyInitializeScan    Key = "initializeScan"
+	KeyRunGlobalScan     Key = "runGlobalScan"
+	KeyAutoSelectPolicy  Key = "autoSelectPolicy"
+	KeyKeepNewest        Key = "keepNewest"
+	KeyKeepOldest        Key = "keepOldest"
+	KeyKeepByPath        Key = "keepByPath"
+	KeyClear             Key = "clear"
+	KeyOriginalCopy      Key = "originalCopy"
+	KeyDuplicateN        Key = "duplicateN"
+	KeyReviewDeleteN     Key = "reviewDeleteN"
+	KeySearchPlaceholder Key = "searchPlaceholder"
+	KeyLocalIndex        Key = "localIndex"
 )
 
 var messages = map[Lang]map[Key]string{
@@ -241,6 +265,29 @@ var messages = map[Lang]map[Key]string{
 		KeyCannotDeleteSelf:     "Onley cannot delete its own running executable.",
 		KeyFileMenu:             "File",
 		KeyEditMenu:             "Edit",
+		KeyReclaimableSpace:     "Reclaimable space",
+		KeyAllCopies:            "All copies",
+		KeyImages:               "Images",
+		KeyVideos:               "Videos",
+		KeyDocuments:            "Documents",
+		KeyArchives:             "Archives",
+		KeySystem:               "System",
+		KeySearch:               "Search",
+		KeySourceFolders:        "Source folders",
+		KeyAllFolders:           "All folders",
+		KeyDropDirectory:        "Drop directory here",
+		KeyInitializeScan:       "Initialize scan sequence",
+		KeyRunGlobalScan:        "Run global scan",
+		KeyAutoSelectPolicy:     "Auto-select policy:",
+		KeyKeepNewest:           "Keep newest",
+		KeyKeepOldest:           "Keep oldest",
+		KeyKeepByPath:           "Keep by path",
+		KeyClear:                "Clear",
+		KeyOriginalCopy:         "Original copy",
+		KeyDuplicateN:           "Duplicate — %02d",
+		KeyReviewDeleteN:        "Review & delete (%s)",
+		KeySearchPlaceholder:    "Search by file name or path",
+		KeyLocalIndex:           "Local index",
 	},
 	Chinese: {
 		KeySubtitle:             "查找并删除重复文件",
@@ -335,6 +382,29 @@ var messages = map[Lang]map[Key]string{
 		KeyCannotDeleteSelf:     "Onley 无法删除正在运行的自身程序。",
 		KeyFileMenu:             "文件",
 		KeyEditMenu:             "编辑",
+		KeyReclaimableSpace:     "可释放空间",
+		KeyAllCopies:            "全部副本",
+		KeyImages:               "图片",
+		KeyVideos:               "视频",
+		KeyDocuments:            "文档",
+		KeyArchives:             "压缩包",
+		KeySystem:               "系统",
+		KeySearch:               "搜索",
+		KeySourceFolders:        "源文件夹",
+		KeyAllFolders:           "全部文件夹",
+		KeyDropDirectory:        "拖入文件夹",
+		KeyInitializeScan:       "开始扫描序列",
+		KeyRunGlobalScan:        "全局扫描",
+		KeyAutoSelectPolicy:     "自动选择策略：",
+		KeyKeepNewest:           "保留最新",
+		KeyKeepOldest:           "保留最旧",
+		KeyKeepByPath:           "按路径保留",
+		KeyClear:                "清除",
+		KeyOriginalCopy:         "原始副本",
+		KeyDuplicateN:           "重复副本 — %02d",
+		KeyReviewDeleteN:        "检查并删除（%s）",
+		KeySearchPlaceholder:    "按文件名或路径搜索",
+		KeyLocalIndex:           "本地索引",
 	},
 }
 
