@@ -76,8 +76,9 @@ brew install --cask onley
 The NSGo desktop client covers the daily cleanup loop: scan one or more folders,
 review duplicate groups, choose one copy to keep per group, and delete the rest
 after one confirmation. Scanning shows a live MB/s gauge with a moving needle.
-The sidebar holds the source folders; drag a folder onto the drop zone or click
-it to type a path. A folder inside another selected folder is merged into its
+The sidebar holds the source folders; drag a folder onto the drop zone, or click
+it to open the system folder picker. A "Type a path" link under the drop zone
+opens a dialog with clipboard paste and recent folders. A folder inside another selected folder is merged into its
 parent before scanning; merging uses absolute paths, so symlink aliases are not
 resolved. The header shows indexed files, duplicate groups and reclaimable
 space. The tabs filter groups by file type, and Search filters by file name or

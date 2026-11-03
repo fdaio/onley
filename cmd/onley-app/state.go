@@ -526,6 +526,23 @@ func (s *state) checkPath(cx *core.Scope, raw string) {
 	})
 }
 
+// pickFolders asks the system for folders and adds each one chosen. A folder
+// the picker cannot return, or an error, leaves the list as it was.
+func (s *state) pickFolders(cx *core.Scope) {
+	if s.scanning.Get() || s.busy.Get() {
+		return
+	}
+	cx.PickDirectories(core.PickDirectoriesOptions{Multiple: true}, func(dirs []core.Directory, err error) {
+		if err != nil {
+			s.message.Set(err.Error())
+			return
+		}
+		for _, dir := range dirs {
+			s.addFolder(dir.Path)
+		}
+	})
+}
+
 // pastePath fills the field from the clipboard: a copied folder first, then
 // clipboard text.
 func (s *state) pastePath(cx *core.Scope) {
