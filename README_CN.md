@@ -92,6 +92,19 @@ open cmd/onley-app/dist/Onley-0.2.12-macos_arm64/Onley.app
 open cmd/onley-app/dist/Onley-0.2.12-macos_x64/Onley.app
 ```
 
+安装本地构建会替换 `/Applications/Onley.app`：
+
+```sh
+make install
+```
+
+它会先重新构建。Homebrew 安装的版本也在同一位置，需要恢复时执行
+`brew reinstall --cask onley`。想让两者共存，可以指定 `INSTALL_DIR`：
+
+```sh
+make install INSTALL_DIR="$HOME/Applications"
+```
+
 构建应用需要 Go 1.27.3 和 Xcode；NSGo 版本固定在 `go.mod`。
 NSGo 仍处于 early 阶段、没有稳定 API，升级应作为独立任务。
 `make app` 构建当前 Mac 架构；`make app-all` 打包 macOS、Windows 和 Linux。

@@ -100,6 +100,20 @@ open cmd/onley-app/dist/Onley-0.2.12-macos_arm64/Onley.app
 open cmd/onley-app/dist/Onley-0.2.12-macos_x64/Onley.app
 ```
 
+To install the local build, which replaces `/Applications/Onley.app`:
+
+```sh
+make install
+```
+
+It rebuilds the bundle first. A Homebrew cask install lives in the same place,
+so `brew reinstall --cask onley` restores it. Set `INSTALL_DIR` to keep the two
+apart:
+
+```sh
+make install INSTALL_DIR="$HOME/Applications"
+```
+
 Building the app needs Go 1.27.3 and Xcode; NSGo is pinned in `go.mod`.
 NSGo is early and has no stable API, so upgrade it as a separate task.
 `make app` builds for this Mac's architecture; `make app-all` packages macOS,
