@@ -842,6 +842,9 @@ func (s *state) confirmDelete() {
 	for i, file := range plan.Keeps {
 		keeps[i] = cleaner.Target{Path: file.Path, Size: file.Size, Mtime: file.Mtime}
 	}
+	// Snapshot the roots here: signals are not safe to read from the delete
+	// goroutine, and the folders removed below must not reach past them.
+	roots := append([]string(nil), s.scanDirs.Get()...)
 
 	// Resolve localized text before the worker starts: signals are not safe to
 	// read from the delete goroutine.
@@ -869,11 +872,13 @@ func (s *state) confirmDelete() {
 		results := cleaner.Delete(s.cfg.Store, targets, true)
 		var deleted, failed, missing int
 		var freed int64
+		var deletedPaths []string
 		firstErr := ""
 		for i, result := range results {
 			if result.Deleted {
 				deleted++
 				freed += targets[i].Size
+				deletedPaths = append(deletedPaths, result.Path)
 			}
 			if result.Missing {
 				missing++
@@ -902,9 +907,13 @@ func (s *state) confirmDelete() {
 				}
 			}
 		}
+		removedFolders := len(cleaner.RemoveEmptyParents(deletedPaths, roots))
 		s.cx.Post(func() {
 			s.busy.Set(false)
 			note := s.tf(i18n.KeyDeleted, s.fileCount(deleted), format.Bytes(freed))
+			if removedFolders > 0 {
+				note += " " + s.tf(i18n.KeyRemovedFolders, removedFolders)
+			}
 			if missing > 0 {
 				note += " " + s.tf(i18n.KeyAlreadyGone, missing)
 			}

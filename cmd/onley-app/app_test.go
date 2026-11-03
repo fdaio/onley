@@ -546,6 +546,41 @@ func TestAddFolderRecentSurvivesRestart(t *testing.T) {
 	restarted.WaitFor("id:recent-folder:"+dir, 2*time.Second)
 }
 
+func TestDeleteRemovesEmptiedFolder(t *testing.T) {
+	dir := t.TempDir()
+	keepDir := filepath.Join(dir, "keep")
+	dupDir := filepath.Join(dir, "dup")
+	for _, d := range []string{keepDir, dupDir} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	content := strings.Repeat("a", 4096)
+	keep := writeFile(t, keepDir, "a.bin", content)
+	writeFile(t, dupDir, "b.bin", content)
+
+	app := startApp(t, newStore(t), dir, nil)
+	app.Press("id:scan-button")
+	app.WaitUntil(10*time.Second, func() bool { return app.Find("id:group-summary").Text == "1" })
+
+	app.Press("id:keep:" + keep)
+	app.WaitFor("text:REVIEW & DELETE (1 FILE)", 2*time.Second)
+	app.Press("id:delete-files")
+	app.WaitFor("id:confirm-dialog", 2*time.Second)
+	app.Press("id:delete-confirm")
+
+	app.WaitUntil(10*time.Second, func() bool {
+		_, err := os.Stat(dupDir)
+		return os.IsNotExist(err)
+	})
+	if _, err := os.Stat(keepDir); err != nil {
+		t.Errorf("the folder of the kept file is gone: %v", err)
+	}
+	app.WaitUntil(5*time.Second, func() bool {
+		return app.Exists("id:note") && strings.Contains(app.Find("id:note").Text, "1 empty folder(s) removed")
+	})
+}
+
 func TestScanSelectCancelThenDelete(t *testing.T) {
 	dir := t.TempDir()
 	content := strings.Repeat("a", 4096)

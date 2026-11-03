@@ -642,7 +642,7 @@ func (s *state) noteText(cx *core.Scope) core.Node {
 		if s.noteSuccess.Get() {
 			color = c.success
 		}
-		return core.Text{ContentFunc: func() string { return s.note.Get() }, Style: core.Style{
+		return core.Text{ContentFunc: func() string { return s.note.Get() }, TestID: "note", Style: core.Style{
 			FontFamily: monoFont, FontSize: 9, Color: color}}
 	}}
 }
