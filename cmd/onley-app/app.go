@@ -679,30 +679,80 @@ func (s *state) addFolderDialog(cx *core.Scope) core.Node {
 		Children: []core.Node{
 			core.Text{Content: strings.ToUpper(s.t(i18n.KeyAddFolder)),
 				Style: core.Style{FontFamily: displayFont, FontSize: 26, Color: c.text}},
-			base.Input{
-				Value:       s.scanPath.Get,
-				OnChange:    s.scanPath.Set,
-				OnSubmit:    func(string) { s.confirmAddFolder() },
-				Placeholder: s.t(i18n.KeyAddFolder),
-				Disabled:    func() bool { return s.scanning.Get() || s.busy.Get() },
-				TestID:      "scan-path",
-				Style: core.Style{
-					Height: core.Pt(36), Background: c.background, BorderWidth: 1, BorderColor: c.border,
-					Padding: core.Symmetric(7, 9), FontFamily: monoFont, FontSize: 10, Color: c.text,
-					PlaceholderColor: c.muted,
+			core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 8}, Children: []core.Node{
+				base.Input{
+					Value:       s.scanPath.Get,
+					OnChange:    func(value string) { s.setScanPath(cx, value) },
+					OnSubmit:    func(string) { s.confirmAddFolder() },
+					Placeholder: s.t(i18n.KeyAddFolder),
+					Disabled:    func() bool { return s.scanning.Get() || s.busy.Get() },
+					TestID:      "scan-path",
+					Style: core.Style{
+						FlexGrow: 1, Height: core.Pt(36), Background: c.background, BorderWidth: 1, BorderColor: c.border,
+						Padding: core.Symmetric(7, 9), FontFamily: monoFont, FontSize: 10, Color: c.text,
+						PlaceholderColor: c.muted,
+					},
 				},
-			},
-			core.Show{When: func() bool { return s.message.Get() != "" }, Then: func(*core.Scope) core.Node {
-				return core.Text{ContentFunc: func() string { return s.message.Get() }, TestID: "add-folder-error",
-					Style: core.Style{FontFamily: monoFont, FontSize: 9, Color: c.accent}}
+				appButton(cx, s.t(i18n.KeyPastePath), "paste-path", buttonSecondary,
+					func() bool { return s.scanning.Get() || s.busy.Get() }, func() { s.pastePath(cx) }),
 			}},
+			core.Dynamic(func(*core.Scope) core.Node {
+				info := s.pathState.Get()
+				if info.status == pathUnchecked {
+					return core.View{}
+				}
+				color := c.danger
+				if info.status == pathUsable {
+					color = c.success
+				}
+				return core.Text{Content: s.pathHint(), TestID: "path-status", MaxLines: 2,
+					Style: core.Style{FontFamily: monoFont, FontSize: 9, Color: color}}
+			}),
+			core.Dynamic(func(*core.Scope) core.Node {
+				recent := s.recent.Get()
+				if len(recent) == 0 {
+					return core.View{}
+				}
+				rows := make([]core.Node, 0, len(recent)+1)
+				rows = append(rows, core.Text{Content: strings.ToUpper(s.t(i18n.KeyRecentFolders)),
+					Style: core.Style{FontFamily: monoFont, FontSize: 8, FontWeight: core.FontWeightBold, Color: c.muted}})
+				for _, path := range recent {
+					rows = append(rows, s.recentRow(cx, path))
+				}
+				return core.View{Style: core.Style{Direction: core.Column, Gap: 2}, Children: rows}
+			}),
+			core.Dynamic(func(*core.Scope) core.Node {
+				if s.message.Get() == "" {
+					return core.View{}
+				}
+				return core.Text{Content: s.message.Get(), TestID: "add-folder-error",
+					Style: core.Style{FontFamily: monoFont, FontSize: 9, Color: c.accent}}
+			}),
 			core.View{Style: core.Style{Direction: core.Row, JustifyContent: core.JustifyEnd, Gap: 8}, Children: []core.Node{
 				appButton(cx, s.t(i18n.KeyCancel), "cancel-add-folder", buttonSecondary, func() bool { return s.busy.Get() }, s.closeAddFolder),
 				appButton(cx, s.t(i18n.KeyAdd), "add-folder-confirm", buttonPrimary, func() bool {
-					return s.scanning.Get() || s.busy.Get() || strings.TrimSpace(s.scanPath.Get()) == ""
+					return s.scanning.Get() || s.busy.Get() || s.pathState.Get().status != pathUsable
 				}, s.confirmAddFolder),
 			}},
 		},
+	}
+}
+
+// recentRow is one remembered folder; pressing it fills the field with it.
+func (s *state) recentRow(cx *core.Scope, path string) core.Node {
+	c := colorsOf(cx)
+	return base.Button{
+		OnPress: func(core.PressEvent) { s.setScanPath(cx, path) },
+		Label:   displayPath(path, s.home),
+		TestID:  "recent-folder:" + path,
+		Style: core.Style{
+			Direction: core.Row, Padding: core.Symmetric(4, 6),
+			Hover: &core.Style{Background: c.surfaceHover},
+		},
+		Children: []core.Node{core.Text{Content: displayPath(path, s.home), MaxLines: 1,
+			EllipsizeMode: core.EllipsizeMiddle,
+			Style: core.Style{FlexGrow: 1, FlexShrink: 1, MinWidth: core.Pt(0),
+				FontFamily: monoFont, FontSize: 9, Color: c.text}}},
 	}
 }
 

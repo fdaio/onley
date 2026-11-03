@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -44,6 +45,34 @@ type scanProgress struct {
 	LastError        string
 }
 
+const (
+	// recentLimit is how many remembered folders the dialog lists.
+	recentLimit = 5
+	// recentKey names the storage entry that holds them.
+	recentKey = "recent_folders"
+	// pathDelay is how long typing settles before the path is checked.
+	pathDelay = 150 * time.Millisecond
+)
+
+// pathStatus is what the dialog knows about the typed path.
+type pathStatus int
+
+const (
+	pathUnchecked pathStatus = iota
+	pathUsable
+	pathMissing
+	pathFile
+	pathDenied
+	pathUnreadable
+	pathUnresolved
+)
+
+// pathInfo is a pathStatus with the error that produced it.
+type pathInfo struct {
+	status pathStatus
+	err    error
+}
+
 type state struct {
 	cfg        Config
 	cx         *core.Scope
@@ -59,6 +88,9 @@ type state struct {
 	scanDirs     *core.Signal[[]string]
 	scanPath     *core.Signal[string]
 	addingFolder *core.Signal[bool]
+	pathState    *core.Signal[pathInfo]
+	recent       *core.Signal[[]string]
+	pathTimer    *time.Timer
 	keep         *core.Signal[map[string]string]
 	keepPolicy   *core.Signal[appmodel.KeepPolicy]
 	category     *core.Signal[category]
@@ -133,6 +165,8 @@ func newState(cx *core.Scope, cfg Config) *state {
 		scanDirs:     core.NewSignalFunc(cx, []string{defaultDir}, nil),
 		scanPath:     core.NewSignal(cx, ""),
 		addingFolder: core.NewSignal(cx, false),
+		pathState:    core.NewSignal(cx, pathInfo{}),
+		recent:       core.NewSignalFunc(cx, loadRecent(cx), nil),
 		keep:         core.NewSignalFunc(cx, map[string]string{}, nil),
 		keepPolicy:   core.NewSignal(cx, policy),
 		category:     core.NewSignal(cx, categoryAll),
@@ -345,13 +379,16 @@ func (s *state) openAddFolder() {
 	}
 	s.scanPath.Set("")
 	s.message.Set("")
+	s.pathState.Set(pathInfo{})
 	s.addingFolder.Set(true)
 }
 
 func (s *state) closeAddFolder() {
+	s.stopPathCheck()
 	s.addingFolder.Set(false)
 	s.scanPath.Set("")
 	s.message.Set("")
+	s.pathState.Set(pathInfo{})
 }
 
 func (s *state) confirmAddFolder() {
@@ -375,38 +412,171 @@ func (s *state) addFolder(raw string) bool {
 	if s.scanning.Get() || s.busy.Get() {
 		return false
 	}
+	abs, info := s.probePath(raw)
+	switch info.status {
+	case pathUnchecked:
+		return false
+	case pathUsable:
+	case pathDenied:
+		s.message.Set(s.tf(i18n.KeyPermissionFolder, abs))
+		return false
+	case pathFile:
+		s.message.Set(s.tf(i18n.KeyNotAFolder, abs))
+		return false
+	case pathUnresolved:
+		s.message.Set(s.tf(i18n.KeyCannotResolvePath, info.err))
+		return false
+	default:
+		s.message.Set(s.tf(i18n.KeyCannotScanFolder, info.err))
+		return false
+	}
+	roots := append([]string(nil), s.scanDirs.Get()...)
+	roots = append(roots, abs)
+	s.scanDirs.Set(appmodel.MergeRoots(roots))
+	s.rememberRecent(abs)
+	s.refreshVisible()
+	s.scanPath.Set("")
+	s.message.Set("")
+	return true
+}
+
+// probePath reports what raw names without changing the selected folders.
+func (s *state) probePath(raw string) (string, pathInfo) {
 	path := s.expand(raw)
 	if path == "" {
-		return false
+		return "", pathInfo{status: pathUnchecked}
 	}
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(s.home, path)
 	}
 	abs, err := filepath.Abs(path)
 	if err != nil {
-		s.message.Set(s.tf(i18n.KeyCannotResolvePath, err))
-		return false
+		return "", pathInfo{status: pathUnresolved, err: err}
 	}
 	info, err := os.Stat(abs)
-	if err != nil {
-		if isPermissionError(err) {
-			s.message.Set(s.tf(i18n.KeyPermissionFolder, abs))
-		} else {
-			s.message.Set(s.tf(i18n.KeyCannotScanFolder, err))
-		}
-		return false
+	switch {
+	case err == nil && info.IsDir():
+		return abs, pathInfo{status: pathUsable}
+	case err == nil:
+		return abs, pathInfo{status: pathFile}
+	case isPermissionError(err):
+		return abs, pathInfo{status: pathDenied, err: err}
+	case os.IsNotExist(err):
+		return abs, pathInfo{status: pathMissing, err: err}
+	default:
+		return abs, pathInfo{status: pathUnreadable, err: err}
 	}
-	if !info.IsDir() {
-		s.message.Set(s.tf(i18n.KeyNotAFolder, abs))
-		return false
+}
+
+// pathHint is the dialog's message about the typed path.
+func (s *state) pathHint() string {
+	info := s.pathState.Get()
+	switch info.status {
+	case pathUsable:
+		return s.t(i18n.KeyPathUsable)
+	case pathMissing:
+		return s.t(i18n.KeyPathMissing)
+	case pathFile:
+		return s.t(i18n.KeyPathFile)
+	case pathDenied:
+		return s.t(i18n.KeyPathDenied)
+	case pathUnresolved:
+		return s.tf(i18n.KeyCannotResolvePath, info.err)
+	case pathUnreadable:
+		return s.tf(i18n.KeyCannotScanFolder, info.err)
 	}
-	roots := append([]string(nil), s.scanDirs.Get()...)
-	roots = append(roots, abs)
-	s.scanDirs.Set(appmodel.MergeRoots(roots))
-	s.refreshVisible()
-	s.scanPath.Set("")
+	return ""
+}
+
+// setScanPath replaces the typed path, clears the last error and checks it.
+func (s *state) setScanPath(cx *core.Scope, raw string) {
+	s.scanPath.Set(raw)
 	s.message.Set("")
-	return true
+	s.schedulePathCheck(cx, raw)
+}
+
+// schedulePathCheck checks the path once typing settles.
+func (s *state) schedulePathCheck(cx *core.Scope, raw string) {
+	s.stopPathCheck()
+	if strings.TrimSpace(raw) == "" {
+		s.pathState.Set(pathInfo{})
+		return
+	}
+	s.pathTimer = time.AfterFunc(pathDelay, func() {
+		s.checkPath(cx, raw)
+	})
+}
+
+// stopPathCheck cancels the check that is waiting for typing to settle.
+func (s *state) stopPathCheck() {
+	if s.pathTimer != nil {
+		s.pathTimer.Stop()
+		s.pathTimer = nil
+	}
+}
+
+// checkPath stats the path off the UI thread and reports the result, unless
+// the field changed while the stat ran.
+func (s *state) checkPath(cx *core.Scope, raw string) {
+	_, info := s.probePath(raw)
+	cx.Post(func() {
+		if s.scanPath.Get() == raw {
+			s.pathState.Set(info)
+		}
+	})
+}
+
+// pastePath fills the field from the clipboard: a copied folder first, then
+// clipboard text.
+func (s *state) pastePath(cx *core.Scope) {
+	cx.ReadClipboardFiles(func(uris []string) {
+		for _, uri := range uris {
+			path, ok := filePath(uri)
+			if !ok {
+				continue
+			}
+			if info, err := os.Stat(path); err == nil && info.IsDir() {
+				s.setScanPath(cx, path)
+				return
+			}
+		}
+		cx.ReadClipboard(func(text string) {
+			text = strings.TrimSpace(text)
+			if text == "" {
+				s.message.Set(s.t(i18n.KeyClipboardEmpty))
+				return
+			}
+			s.setScanPath(cx, text)
+		})
+	})
+}
+
+// loadRecent returns the folders used before, most recent first.
+func loadRecent(cx *core.Scope) []string {
+	raw, ok := cx.Storage().GetItem(recentKey)
+	if !ok {
+		return nil
+	}
+	var paths []string
+	if err := json.Unmarshal([]byte(raw), &paths); err != nil {
+		return nil
+	}
+	return paths
+}
+
+// rememberRecent moves path to the front of the remembered folders.
+func (s *state) rememberRecent(path string) {
+	next := make([]string, 0, recentLimit)
+	next = append(next, path)
+	for _, old := range s.recent.Get() {
+		if old != path && len(next) < recentLimit {
+			next = append(next, old)
+		}
+	}
+	s.recent.Set(next)
+	if data, err := json.Marshal(next); err == nil {
+		_ = s.cx.Storage().SetItem(recentKey, string(data))
+	}
 }
 
 // removeFolder drops a folder from the scan roots.

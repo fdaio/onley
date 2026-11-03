@@ -175,6 +175,14 @@ const (
 	KeyPermissionReadErrors Key = "permissionReadErrors"
 	KeyPermissionFolder     Key = "permissionFolder"
 	KeyPermissionIndex      Key = "permissionIndex"
+
+	KeyPastePath      Key = "pastePath"
+	KeyClipboardEmpty Key = "clipboardEmpty"
+	KeyRecentFolders  Key = "recentFolders"
+	KeyPathUsable     Key = "pathUsable"
+	KeyPathMissing    Key = "pathMissing"
+	KeyPathFile       Key = "pathFile"
+	KeyPathDenied     Key = "pathDenied"
 )
 
 var messages = map[Lang]map[Key]string{
@@ -299,6 +307,13 @@ var messages = map[Lang]map[Key]string{
 		KeyPermissionReadErrors: "%d file(s) could not be read because of permissions. Check folder access or grant Onley Full Disk Access.",
 		KeyPermissionFolder:     "Cannot read %s: permission denied. Check the folder permissions or grant Onley Full Disk Access.",
 		KeyPermissionIndex:      "Cannot open the index: permission denied. Check the permissions on ~/.onley.",
+		KeyPastePath:            "Paste",
+		KeyClipboardEmpty:       "The clipboard holds no folder or path.",
+		KeyRecentFolders:        "Recent folders",
+		KeyPathUsable:           "Folder can be added.",
+		KeyPathMissing:          "No folder at this path.",
+		KeyPathFile:             "That path is a file, not a folder.",
+		KeyPathDenied:           "Cannot read that folder: permission denied.",
 	},
 	Chinese: {
 		KeySubtitle:             "查找并删除重复文件",
@@ -421,6 +436,13 @@ var messages = map[Lang]map[Key]string{
 		KeyPermissionReadErrors: "%d 个文件因权限不足无法读取。请检查文件夹权限，或授予 Onley 完全磁盘访问权限。",
 		KeyPermissionFolder:     "无法读取 %s：权限不足。请检查文件夹权限，或授予 Onley 完全磁盘访问权限。",
 		KeyPermissionIndex:      "无法打开索引：权限不足。请检查 ~/.onley 的权限。",
+		KeyPastePath:            "粘贴",
+		KeyClipboardEmpty:       "剪贴板里没有文件夹或路径。",
+		KeyRecentFolders:        "最近使用",
+		KeyPathUsable:           "可以添加该文件夹。",
+		KeyPathMissing:          "该路径下没有文件夹。",
+		KeyPathFile:             "该路径是文件，不是文件夹。",
+		KeyPathDenied:           "无法读取该文件夹：权限不足。",
 	},
 }
 
