@@ -88,7 +88,7 @@ func startAppWithStorage(t *testing.T, store *db.DB, dir string, storage map[str
 
 func addFolderViaDialog(t *testing.T, app *nsgotest.App, path string) {
 	t.Helper()
-	app.Press("id:add-folder")
+	app.Press("id:type-path")
 	app.WaitFor("id:add-folder-dialog", 2*time.Second)
 	app.Type("id:scan-path", path)
 	app.WaitUntil(2*time.Second, func() bool { return !app.Find("id:add-folder-confirm").Props.Disabled })
@@ -359,7 +359,7 @@ func TestScanRejectsMissingFolder(t *testing.T) {
 	app := startApp(t, store, t.TempDir(), nil)
 	missing := filepath.Join(t.TempDir(), "not-there")
 
-	app.Press("id:add-folder")
+	app.Press("id:type-path")
 	app.WaitFor("id:add-folder-dialog", 2*time.Second)
 	app.Type("id:scan-path", missing)
 	app.WaitFor("text:No folder at this path.", 2*time.Second)
@@ -374,12 +374,56 @@ func TestScanRejectsMissingFolder(t *testing.T) {
 	}
 }
 
+func TestAddFolderPicksNativeFolder(t *testing.T) {
+	dir := t.TempDir()
+	app := startApp(t, newStore(t), t.TempDir(), nil)
+	app.PickDirectories = func(core.DirectoriesRequest) []core.Directory {
+		return []core.Directory{{Path: dir}}
+	}
+
+	app.Press("id:add-folder")
+	app.WaitFor("id:folder:"+dir, 2*time.Second)
+	if !app.Exists("id:drop-zone") {
+		t.Errorf("the picker opened the dialog instead of adding the folder")
+	}
+	if len(app.DirectoryPicks) != 1 || app.DirectoryPicks[0].Limit < 2 {
+		t.Errorf("picker request = %+v, want one request for several folders", app.DirectoryPicks)
+	}
+}
+
+func TestAddFolderPicksNativeMultiple(t *testing.T) {
+	first := t.TempDir()
+	second := t.TempDir()
+	app := startApp(t, newStore(t), t.TempDir(), nil)
+	app.PickDirectories = func(core.DirectoriesRequest) []core.Directory {
+		return []core.Directory{{Path: first}, {Path: second}}
+	}
+
+	app.Press("id:add-folder")
+	app.WaitFor("id:folder:"+first, 2*time.Second)
+	app.WaitFor("id:folder:"+second, 2*time.Second)
+}
+
+func TestAddFolderPickerCancel(t *testing.T) {
+	dir := t.TempDir()
+	app := startApp(t, newStore(t), dir, nil)
+
+	app.Press("id:add-folder")
+	app.WaitUntil(2*time.Second, func() bool { return len(app.DirectoryPicks) == 1 })
+	if app.Exists("id:add-folder-dialog") {
+		t.Errorf("a cancelled pick opened the dialog")
+	}
+	if !app.Exists("id:folder:" + dir) {
+		t.Errorf("the existing folder disappeared after a cancelled pick")
+	}
+}
+
 func TestAddFolderPastesClipboardFolder(t *testing.T) {
 	dir := t.TempDir()
 	app := startApp(t, newStore(t), t.TempDir(), nil)
 	app.ClipboardFiles = []string{"file://" + dir}
 
-	app.Press("id:add-folder")
+	app.Press("id:type-path")
 	app.WaitFor("id:add-folder-dialog", 2*time.Second)
 	app.Press("id:paste-path")
 	app.WaitUntil(2*time.Second, func() bool { return app.Find("id:scan-path").Text == dir })
@@ -396,7 +440,7 @@ func TestAddFolderPastesClipboardText(t *testing.T) {
 	app := startApp(t, newStore(t), t.TempDir(), nil)
 	app.Clipboard = "  " + dir + "\n"
 
-	app.Press("id:add-folder")
+	app.Press("id:type-path")
 	app.WaitFor("id:add-folder-dialog", 2*time.Second)
 	app.Press("id:paste-path")
 	app.WaitUntil(2*time.Second, func() bool { return app.Find("id:scan-path").Text == dir })
@@ -405,7 +449,7 @@ func TestAddFolderPastesClipboardText(t *testing.T) {
 func TestAddFolderPastesEmptyClipboard(t *testing.T) {
 	app := startApp(t, newStore(t), t.TempDir(), nil)
 
-	app.Press("id:add-folder")
+	app.Press("id:type-path")
 	app.WaitFor("id:add-folder-dialog", 2*time.Second)
 	app.Press("id:paste-path")
 	app.WaitFor("id:add-folder-error", 2*time.Second)
@@ -422,7 +466,7 @@ func TestAddFolderValidatesTypedPath(t *testing.T) {
 	file := writeFile(t, dir, "a.txt", "x")
 	app := startApp(t, newStore(t), t.TempDir(), nil)
 
-	app.Press("id:add-folder")
+	app.Press("id:type-path")
 	app.WaitFor("id:add-folder-dialog", 2*time.Second)
 
 	app.Type("id:scan-path", filepath.Join(dir, "missing"))
@@ -454,7 +498,7 @@ func TestAddFolderRemembersRecent(t *testing.T) {
 	addFolderViaDialog(t, app, second)
 	addFolderViaDialog(t, app, first)
 
-	app.Press("id:add-folder")
+	app.Press("id:type-path")
 	app.WaitFor("id:add-folder-dialog", 2*time.Second)
 	app.WaitFor("id:recent-folder:"+first, 2*time.Second)
 	app.WaitFor("id:recent-folder:"+second, 2*time.Second)
@@ -476,7 +520,7 @@ func TestAddFolderKeepsFiveRecent(t *testing.T) {
 		addFolderViaDialog(t, app, dir)
 	}
 
-	app.Press("id:add-folder")
+	app.Press("id:type-path")
 	app.WaitFor("id:add-folder-dialog", 2*time.Second)
 	app.WaitFor("id:recent-folder:"+dirs[5], 2*time.Second)
 	if app.Exists("id:recent-folder:" + dirs[0]) {
@@ -497,7 +541,7 @@ func TestAddFolderRecentSurvivesRestart(t *testing.T) {
 		Home: t.TempDir(), DefaultDir: t.TempDir(), Workers: 2}
 	restarted := nsgotest.Start(t, Root(cfg), nsgotest.Size(1080, 720),
 		nsgotest.Storage(map[string]string{"recent_folders": saved}))
-	restarted.Press("id:add-folder")
+	restarted.Press("id:type-path")
 	restarted.WaitFor("id:add-folder-dialog", 2*time.Second)
 	restarted.WaitFor("id:recent-folder:"+dir, 2*time.Second)
 }

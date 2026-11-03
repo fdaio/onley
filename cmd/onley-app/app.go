@@ -361,21 +361,36 @@ func (s *state) dropZone(cx *core.Scope) core.Node {
 		},
 		Children: []core.Node{
 			base.Button{
-				OnPress: func(core.PressEvent) { s.openAddFolder() },
-				Label:   s.t(i18n.KeyAddFolder),
-				TestID:  "add-folder",
+				OnPress:  func(core.PressEvent) { s.pickFolders(cx) },
+				Disabled: func() bool { return s.scanning.Get() || s.busy.Get() },
+				Label:    s.t(i18n.KeyAddFolder),
+				TestID:   "add-folder",
 				Style: core.Style{
 					FlexGrow: 1, Width: core.Pct(100), Direction: core.Column,
 					AlignItems: core.AlignCenter, JustifyContent: core.JustifyCenter, Gap: 6,
-					Hover: &core.Style{Background: c.surfaceHover},
+					Hover:    &core.Style{Background: c.surfaceHover},
+					Disabled: &core.Style{Opacity: core.Alpha(0.4)},
 				},
 				Children: []core.Node{
 					core.Icon{SVG: lucide.Plus(), Style: core.Style{Width: core.Pt(18), Height: core.Pt(18), Color: c.text}},
 					core.Text{Content: strings.ToUpper(s.t(i18n.KeyDropDirectory)), Style: core.Style{FontFamily: monoFont,
 						FontSize: 8, FontWeight: core.FontWeightBold, Color: c.text, TextAlign: core.TextAlignCenter}},
-					core.Text{Content: strings.ToUpper(s.t(i18n.KeyInitializeScan)), Style: core.Style{FontFamily: monoFont,
+					core.Text{Content: strings.ToUpper(s.t(i18n.KeyBrowseHint)), Style: core.Style{FontFamily: monoFont,
 						FontSize: 7, Color: c.muted, TextAlign: core.TextAlignCenter}},
 				},
+			},
+			base.Button{
+				OnPress:  func(core.PressEvent) { s.openAddFolder() },
+				Disabled: func() bool { return s.scanning.Get() || s.busy.Get() },
+				Label:    s.t(i18n.KeyTypePath),
+				TestID:   "type-path",
+				Style: core.Style{
+					FlexShrink: 0, AlignItems: core.AlignCenter, Padding: core.Symmetric(6, 8),
+					Hover:    &core.Style{Background: c.surfaceHover},
+					Disabled: &core.Style{Opacity: core.Alpha(0.4)},
+				},
+				Children: []core.Node{core.Text{Content: strings.ToUpper(s.t(i18n.KeyTypePath)),
+					Style: core.Style{FontFamily: monoFont, FontSize: 7, Color: c.muted}}},
 			},
 		},
 	}

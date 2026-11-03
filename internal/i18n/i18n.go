@@ -157,7 +157,6 @@ const (
 	KeySourceFolders     Key = "sourceFolders"
 	KeyAllFolders        Key = "allFolders"
 	KeyDropDirectory     Key = "dropDirectory"
-	KeyInitializeScan    Key = "initializeScan"
 	KeyRunGlobalScan     Key = "runGlobalScan"
 	KeyAutoSelectPolicy  Key = "autoSelectPolicy"
 	KeyKeepNewest        Key = "keepNewest"
@@ -183,6 +182,8 @@ const (
 	KeyPathMissing    Key = "pathMissing"
 	KeyPathFile       Key = "pathFile"
 	KeyPathDenied     Key = "pathDenied"
+	KeyBrowseHint     Key = "browseHint"
+	KeyTypePath       Key = "typePath"
 )
 
 var messages = map[Lang]map[Key]string{
@@ -290,7 +291,6 @@ var messages = map[Lang]map[Key]string{
 		KeySourceFolders:        "Source folders",
 		KeyAllFolders:           "All folders",
 		KeyDropDirectory:        "Drop directory here",
-		KeyInitializeScan:       "Initialize scan sequence",
 		KeyRunGlobalScan:        "Run global scan",
 		KeyAutoSelectPolicy:     "Auto-select policy:",
 		KeyKeepNewest:           "Keep newest",
@@ -314,6 +314,8 @@ var messages = map[Lang]map[Key]string{
 		KeyPathMissing:          "No folder at this path.",
 		KeyPathFile:             "That path is a file, not a folder.",
 		KeyPathDenied:           "Cannot read that folder: permission denied.",
+		KeyBrowseHint:           "click to browse or drop a folder",
+		KeyTypePath:             "Type a path",
 	},
 	Chinese: {
 		KeySubtitle:             "查找并删除重复文件",
@@ -419,7 +421,6 @@ var messages = map[Lang]map[Key]string{
 		KeySourceFolders:        "源文件夹",
 		KeyAllFolders:           "全部文件夹",
 		KeyDropDirectory:        "拖入文件夹",
-		KeyInitializeScan:       "开始扫描序列",
 		KeyRunGlobalScan:        "全局扫描",
 		KeyAutoSelectPolicy:     "自动选择策略：",
 		KeyKeepNewest:           "保留最新",
@@ -443,6 +444,8 @@ var messages = map[Lang]map[Key]string{
 		KeyPathMissing:          "该路径下没有文件夹。",
 		KeyPathFile:             "该路径是文件，不是文件夹。",
 		KeyPathDenied:           "无法读取该文件夹：权限不足。",
+		KeyBrowseHint:           "点击浏览或拖入文件夹",
+		KeyTypePath:             "输入路径",
 	},
 }
 
