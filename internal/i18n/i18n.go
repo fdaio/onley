@@ -184,6 +184,7 @@ const (
 	KeyPathDenied     Key = "pathDenied"
 	KeyBrowseHint     Key = "browseHint"
 	KeyTypePath       Key = "typePath"
+	KeyRemovedFolders Key = "removedFolders"
 )
 
 var messages = map[Lang]map[Key]string{
@@ -316,6 +317,7 @@ var messages = map[Lang]map[Key]string{
 		KeyPathDenied:           "Cannot read that folder: permission denied.",
 		KeyBrowseHint:           "click to browse or drop a folder",
 		KeyTypePath:             "Type a path",
+		KeyRemovedFolders:       "%d empty folder(s) removed.",
 	},
 	Chinese: {
 		KeySubtitle:             "查找并删除重复文件",
@@ -446,6 +448,7 @@ var messages = map[Lang]map[Key]string{
 		KeyPathDenied:           "无法读取该文件夹：权限不足。",
 		KeyBrowseHint:           "点击浏览或拖入文件夹",
 		KeyTypePath:             "输入路径",
+		KeyRemovedFolders:       "已移除 %d 个空文件夹。",
 	},
 }
 
