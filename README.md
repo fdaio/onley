@@ -29,7 +29,7 @@ Website: https://fdaio.github.io/onley/ · [中文](https://fdaio.github.io/onle
 Download a release archive for your platform, or use the [download page](https://fdaio.github.io/onley/download.html):
 
 `<version>` is the release number without the leading `v`, for example
-`0.2.12`.
+`0.2.13`.
 
 ```sh
 # macOS (Apple silicon)
@@ -96,9 +96,9 @@ Build and open it on macOS:
 ```sh
 make app
 # Apple silicon
-open cmd/onley-app/dist/Onley-0.2.12-macos_arm64/Onley.app
+open cmd/onley-app/dist/Onley-0.2.13-macos_arm64/Onley.app
 # Intel
-open cmd/onley-app/dist/Onley-0.2.12-macos_x64/Onley.app
+open cmd/onley-app/dist/Onley-0.2.13-macos_x64/Onley.app
 ```
 
 To install the local build, which replaces `/Applications/Onley.app`:

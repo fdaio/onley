@@ -28,7 +28,7 @@
 
 按平台下载 release 归档，或使用[下载页面](https://fdaio.github.io/onley/download.html)：
 
-`<版本号>` 是不带前导 `v` 的 release 编号，例如 `0.2.12`。
+`<版本号>` 是不带前导 `v` 的 release 编号，例如 `0.2.13`。
 
 ```sh
 # macOS（Apple silicon）
@@ -88,9 +88,9 @@ macOS 构建并打开：
 ```sh
 make app
 # Apple silicon
-open cmd/onley-app/dist/Onley-0.2.12-macos_arm64/Onley.app
+open cmd/onley-app/dist/Onley-0.2.13-macos_arm64/Onley.app
 # Intel
-open cmd/onley-app/dist/Onley-0.2.12-macos_x64/Onley.app
+open cmd/onley-app/dist/Onley-0.2.13-macos_x64/Onley.app
 ```
 
 安装本地构建会替换 `/Applications/Onley.app`：
