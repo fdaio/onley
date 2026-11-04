@@ -185,6 +185,9 @@ const (
 	KeyBrowseHint     Key = "browseHint"
 	KeyTypePath       Key = "typePath"
 	KeyRemovedFolders Key = "removedFolders"
+	KeySettings       Key = "settings"
+	KeyLanguage       Key = "language"
+	KeyClose          Key = "close"
 )
 
 var messages = map[Lang]map[Key]string{
@@ -318,6 +321,9 @@ var messages = map[Lang]map[Key]string{
 		KeyBrowseHint:           "click to browse or drop a folder",
 		KeyTypePath:             "Type a path",
 		KeyRemovedFolders:       "%d empty folder(s) removed.",
+		KeySettings:             "Settings",
+		KeyLanguage:             "Language",
+		KeyClose:                "Close",
 	},
 	Chinese: {
 		KeySubtitle:             "查找并删除重复文件",
@@ -449,6 +455,9 @@ var messages = map[Lang]map[Key]string{
 		KeyBrowseHint:           "点击浏览或拖入文件夹",
 		KeyTypePath:             "输入路径",
 		KeyRemovedFolders:       "已移除 %d 个空文件夹。",
+		KeySettings:             "设置",
+		KeyLanguage:             "语言",
+		KeyClose:                "关闭",
 	},
 }
 
