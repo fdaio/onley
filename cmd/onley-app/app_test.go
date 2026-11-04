@@ -122,14 +122,18 @@ func TestLanguageToggle(t *testing.T) {
 	if !app.Exists("text:LOCAL ONLY") {
 		t.Fatalf("English header missing\n%s", app.Dump())
 	}
-	app.Press("id:language-toggle")
+	app.Press("id:settings")
+	app.WaitFor("id:settings-dialog", 2*time.Second)
+	app.Press("id:lang-zh")
 	app.WaitFor("text:仅本地运行", 2*time.Second)
 	if got := app.Find("id:group-summary").Text; got != "0" {
 		t.Errorf("Chinese summary = %q, want 0\n%s", got, app.Dump())
 	}
 	app.Screenshot("chinese")
-	app.Press("id:language-toggle")
+	app.Press("id:lang-en")
 	app.WaitFor("text:LOCAL ONLY", 2*time.Second)
+	app.Press("id:settings-close")
+	app.WaitForGone("id:settings-dialog", 2*time.Second)
 }
 
 func TestEmptyState(t *testing.T) {
@@ -1010,18 +1014,35 @@ func TestAutoKeepHighlightMatchesChoices(t *testing.T) {
 	})
 }
 
+func TestRemoveHiddenUntilSelected(t *testing.T) {
+	first := t.TempDir()
+	second := t.TempDir()
+	app := startApp(t, newStore(t), first, nil)
+	addFolderViaDialog(t, app, second)
+
+	if app.Exists("id:remove-folder:" + second) {
+		t.Errorf("remove shows on a folder that is neither hovered nor selected")
+	}
+	app.Press("id:folder:" + second)
+	app.WaitFor("id:remove-folder:"+second, 2*time.Second)
+}
+
 func TestRemoveFolder(t *testing.T) {
 	first := t.TempDir()
 	second := t.TempDir()
 	app := startApp(t, newStore(t), first, nil)
 	addFolderViaDialog(t, app, second)
 
+	app.Press("id:folder:" + second)
+	app.WaitFor("id:remove-folder:"+second, 2*time.Second)
 	app.Press("id:remove-folder:" + second)
 	app.WaitForGone("id:folder:"+second, 2*time.Second)
 	if !app.Exists("id:folder:" + first) {
 		t.Fatalf("first folder disappeared\n%s", app.Dump())
 	}
 
+	app.Press("id:folder:" + first)
+	app.WaitFor("id:remove-folder:"+first, 2*time.Second)
 	app.Press("id:remove-folder:" + first)
 	app.WaitForGone("id:folder:"+first, 2*time.Second)
 	if !app.Find("id:scan-button").Props.Disabled {

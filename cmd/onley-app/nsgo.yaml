@@ -4,8 +4,8 @@ version: 0.2.14
 appearance: light
 
 window:
-  width: 1080
-  height: 720
+  width: 1000
+  height: 620
 
 icon:
   png: assets/Icon.png

@@ -59,6 +59,7 @@ func (s *state) menu() []desktop.MenuItem {
 	return []desktop.MenuItem{
 		{Label: "Onley", Items: []desktop.MenuItem{
 			{Role: desktop.MenuAbout},
+			{Label: s.t(i18n.KeySettings), Shortcut: "mod+,", OnSelect: func() { s.settings.Set(true) }},
 			{Separator: true},
 			{Role: desktop.MenuHide},
 			{Role: desktop.MenuHideOthers},
@@ -98,6 +99,7 @@ func (s *state) view(cx *core.Scope) core.Node {
 			s.bottomBar(cx),
 			s.addFolderDialog(cx),
 			s.confirmDialog(cx),
+			s.settingsDialog(cx),
 		},
 	}
 }
@@ -155,15 +157,29 @@ func (s *state) tabBar(cx *core.Scope) core.Node {
 		}
 		children = append(children, s.tab(cx, cat, label))
 	}
-	return base.Tabs{
-		Style: core.Style{
-			FlexShrink: 0, Direction: core.Row, Background: c.surface,
-			Borders: core.Edges{Top: 1, Bottom: 1}, BorderColor: c.border,
+	return core.View{Style: core.Style{
+		FlexShrink: 0, Direction: core.Row, AlignItems: core.AlignStretch,
+		Borders: core.Edges{Top: 1, Bottom: 1}, BorderColor: c.border,
+	}, Children: []core.Node{
+		base.Tabs{
+			Style:    core.Style{FlexGrow: 1, Direction: core.Row, Background: c.surface},
+			Label:    s.t(i18n.KeyAllCopies),
+			TestID:   "category-tabs",
+			Children: children,
 		},
-		Label:    s.t(i18n.KeyAllCopies),
-		TestID:   "category-tabs",
-		Children: children,
-	}
+		base.Button{
+			OnPress: func(core.PressEvent) { s.settings.Set(true) },
+			Label:   s.t(i18n.KeySettings),
+			TestID:  "settings",
+			Style: core.Style{
+				FlexShrink: 0, Width: core.Pt(40), AlignItems: core.AlignCenter, JustifyContent: core.JustifyCenter,
+				Background: c.surface, Hover: &core.Style{Background: c.surfaceHover},
+				Borders: core.Edges{Left: 1}, BorderColor: c.border,
+			},
+			Children: []core.Node{core.Icon{SVG: lucide.Settings(),
+				Style: core.Style{Width: core.Pt(14), Height: core.Pt(14), Color: c.text}}},
+		},
+	}}
 }
 
 func (s *state) tab(cx *core.Scope, cat category, label string) core.Node {
@@ -249,7 +265,7 @@ func (s *state) body(cx *core.Scope) core.Node {
 func (s *state) sidebar(cx *core.Scope) core.Node {
 	c := colorsOf(cx)
 	return core.View{Style: core.Style{
-		Width: core.Pt(260), FlexShrink: 0, Direction: core.Column,
+		Width: core.Pt(260), FlexShrink: 0, Direction: core.Column, MinHeight: core.Pt(0),
 		Background: c.surface, Borders: core.Edges{Right: 1}, BorderColor: c.border,
 	}, Children: []core.Node{
 		core.View{Style: core.Style{
@@ -300,46 +316,61 @@ func (s *state) sidebar(cx *core.Scope) core.Node {
 
 func (s *state) folderRow(cx *core.Scope, root string) core.Node {
 	c := colorsOf(cx)
-	return base.Button{
-		OnPress: func(core.PressEvent) {
-			if s.activeRoot.Get() == root {
-				s.setActiveRoot("")
-			} else {
-				s.setActiveRoot(root)
+	return core.View{
+		// Removing a root is destructive, so it shows only while the row is
+		// under the pointer or is the active one.
+		OnHoverIn: func() { s.hoveredRoot.Set(root) },
+		OnHoverOut: func() {
+			if s.hoveredRoot.Get() == root {
+				s.hoveredRoot.Set("")
 			}
 		},
-		Label:  displayPath(root, s.home),
-		TestID: "folder:" + root,
-		StyleFunc: func() core.Style {
-			background := c.surface
-			if s.activeRoot.Get() == root {
-				background = c.successSoft
+		Children: []core.Node{core.Dynamic(func(cx *core.Scope) core.Node {
+			children := []core.Node{
+				core.Text{Content: displayPath(root, s.home), MaxLines: 1, EllipsizeMode: core.EllipsizeMiddle,
+					Style: core.Style{FlexGrow: 1, FlexShrink: 1, MinWidth: core.Pt(0), MaxWidth: core.Pt(170),
+						FontFamily: monoFont, FontSize: 9, Color: c.text}},
 			}
-			return core.Style{
-				FlexGrow: 1, Direction: core.Row, AlignItems: core.AlignCenter, Gap: 8,
-				Padding: core.Symmetric(10, 12), Background: background,
-				Borders: core.Edges{Bottom: 1}, BorderColor: c.border,
-				Hover: &core.Style{Background: c.surfaceHover},
+			if s.hoveredRoot.Get() == root || s.activeRoot.Get() == root {
+				children = append(children, base.Button{
+					OnPress:  func(core.PressEvent) { s.removeFolder(root) },
+					Disabled: func() bool { return s.scanning.Get() || s.busy.Get() },
+					Label:    s.t(i18n.KeyRemove),
+					TestID:   "remove-folder:" + root,
+					Style: core.Style{
+						Padding: core.Symmetric(3, 6), BorderWidth: 1, BorderColor: c.border,
+						Hover:    &core.Style{Background: c.surfaceHover},
+						Disabled: &core.Style{Opacity: core.Alpha(0.4)},
+					},
+					Children: []core.Node{core.Text{Content: strings.ToUpper(s.t(i18n.KeyRemove)),
+						Style: core.Style{FontFamily: monoFont, FontSize: 7, Color: c.text}}},
+				})
 			}
-		},
-		Children: []core.Node{
-			core.Text{Content: displayPath(root, s.home), MaxLines: 1, EllipsizeMode: core.EllipsizeMiddle,
-				Style: core.Style{FlexGrow: 1, FlexShrink: 1, MinWidth: core.Pt(0), MaxWidth: core.Pt(170),
-					FontFamily: monoFont, FontSize: 9, Color: c.text}},
-			base.Button{
-				OnPress:  func(core.PressEvent) { s.removeFolder(root) },
-				Disabled: func() bool { return s.scanning.Get() || s.busy.Get() },
-				Label:    s.t(i18n.KeyRemove),
-				TestID:   "remove-folder:" + root,
-				Style: core.Style{
-					Padding: core.Symmetric(3, 6), BorderWidth: 1, BorderColor: c.border,
-					Hover:    &core.Style{Background: c.surfaceHover},
-					Disabled: &core.Style{Opacity: core.Alpha(0.4)},
+			return base.Button{
+				OnPress: func(core.PressEvent) {
+					if s.activeRoot.Get() == root {
+						s.setActiveRoot("")
+					} else {
+						s.setActiveRoot(root)
+					}
 				},
-				Children: []core.Node{core.Text{Content: strings.ToUpper(s.t(i18n.KeyRemove)),
-					Style: core.Style{FontFamily: monoFont, FontSize: 7, Color: c.text}}},
-			},
-		},
+				Label:  displayPath(root, s.home),
+				TestID: "folder:" + root,
+				StyleFunc: func() core.Style {
+					background := c.surface
+					if s.activeRoot.Get() == root {
+						background = c.successSoft
+					}
+					return core.Style{
+						FlexGrow: 1, Direction: core.Row, AlignItems: core.AlignCenter, Gap: 8,
+						Padding: core.Symmetric(10, 12), Background: background,
+						Borders: core.Edges{Bottom: 1}, BorderColor: c.border,
+						Hover: &core.Style{Background: c.surfaceHover},
+					}
+				},
+				Children: children,
+			}
+		})},
 	}
 }
 
@@ -415,10 +446,6 @@ func (s *state) scanButton(cx *core.Scope) core.Node {
 
 func (s *state) sidebarFooter(cx *core.Scope) core.Node {
 	c := colorsOf(cx)
-	label := "中文"
-	if s.lang.Get() == i18n.Chinese {
-		label = "EN"
-	}
 	return core.View{Style: core.Style{
 		FlexShrink: 0, Direction: core.Row, AlignItems: core.AlignCenter, Gap: 8,
 		Padding: core.Symmetric(7, 12), Borders: core.Edges{Top: 1}, BorderColor: c.border,
@@ -426,14 +453,6 @@ func (s *state) sidebarFooter(cx *core.Scope) core.Node {
 		core.Text{Content: strings.ToUpper(s.t(i18n.KeyLocalOnly)),
 			Style: core.Style{FontFamily: monoFont, FontSize: 7, Color: c.muted}},
 		spacer(),
-		base.Button{
-			OnPress: func(core.PressEvent) { s.toggleLanguage() },
-			Label:   s.t(i18n.KeySwitchLanguage),
-			TestID:  "language-toggle",
-			Style:   core.Style{Padding: core.Symmetric(2, 4), Hover: &core.Style{Background: c.surfaceHover}},
-			Children: []core.Node{core.Text{Content: label, Style: core.Style{FontFamily: monoFont,
-				FontSize: 8, FontWeight: core.FontWeightBold, Color: c.text}}},
-		},
 	}}
 }
 
@@ -514,7 +533,7 @@ func (s *state) bottomBar(cx *core.Scope) core.Node {
 		TestID: "bottom-bar",
 		Style: core.Style{
 			FlexShrink: 0, Direction: core.Row, AlignItems: core.AlignCenter, Gap: 14,
-			Background: c.text, Padding: core.Symmetric(10, 20),
+			Background: c.text, Padding: core.Symmetric(7, 20),
 		},
 		Children: []core.Node{
 			core.Text{Content: strings.ToUpper(s.t(i18n.KeyAutoSelectPolicy)),
@@ -567,13 +586,13 @@ func (s *state) reviewButton(cx *core.Scope) core.Node {
 		Label:    s.reviewLabel(),
 		TestID:   "delete-files",
 		Style: core.Style{
-			FlexShrink: 0, Padding: core.Symmetric(12, 26), AlignItems: core.AlignCenter,
+			FlexShrink: 1, Padding: core.Symmetric(8, 16), AlignItems: core.AlignCenter,
 			JustifyContent: core.JustifyCenter, Background: c.accent, BorderWidth: 2, BorderColor: c.text,
 			Hover: &core.Style{Background: c.accentHover}, Active: &core.Style{Background: c.accentPressed},
 			Disabled: &core.Style{Opacity: core.Alpha(0.35)},
 		},
-		Children: []core.Node{core.Text{Content: s.reviewLabel(),
-			Style: core.Style{FontFamily: displayFont, FontSize: 24, Color: c.text}}},
+		Children: []core.Node{core.Text{Content: s.reviewLabel(), MaxLines: 1,
+			Style: core.Style{FontFamily: displayFont, FontSize: 20, Color: c.text}}},
 	}
 }
 
@@ -768,6 +787,67 @@ func (s *state) recentRow(cx *core.Scope, path string) core.Node {
 			EllipsizeMode: core.EllipsizeMiddle,
 			Style: core.Style{FlexGrow: 1, FlexShrink: 1, MinWidth: core.Pt(0),
 				FontFamily: monoFont, FontSize: 9, Color: c.text}}},
+	}
+}
+
+func (s *state) settingsDialog(cx *core.Scope) core.Node {
+	c := colorsOf(cx)
+	return base.Dialog{
+		Open: s.settings.Get,
+		OnOpenChange: func(open bool, _ base.Reason) {
+			s.settings.Set(open)
+		},
+		BackdropStyle: core.Style{Background: core.RGBA(0x111111, 0.55)},
+		PopupStyle: core.Style{
+			Width: core.Pt(420), MaxWidth: core.Pct(90), Background: c.surface,
+			BorderWidth: 2, BorderColor: c.border, Padding: core.All(20), Gap: 12,
+		},
+		Label:  s.t(i18n.KeySettings),
+		TestID: "settings-dialog",
+		Children: []core.Node{
+			core.Text{Content: strings.ToUpper(s.t(i18n.KeySettings)),
+				Style: core.Style{FontFamily: displayFont, FontSize: 26, Color: c.text}},
+			core.Text{Content: strings.ToUpper(s.t(i18n.KeyLanguage)),
+				Style: core.Style{FontFamily: monoFont, FontSize: 8, FontWeight: core.FontWeightBold, Color: c.muted}},
+			core.View{Style: core.Style{Direction: core.Row, Gap: 8}, Children: []core.Node{
+				s.languageOption(cx, "English", i18n.English, "lang-en"),
+				s.languageOption(cx, "简体中文", i18n.Chinese, "lang-zh"),
+			}},
+			core.View{Style: core.Style{Direction: core.Row, JustifyContent: core.JustifyEnd, Gap: 8}, Children: []core.Node{
+				appButton(cx, s.t(i18n.KeyClose), "settings-close", buttonSecondary, nil,
+					func() { s.settings.Set(false) }),
+			}},
+		},
+	}
+}
+
+// languageOption is one choice in the settings dialog; the current one is filled.
+func (s *state) languageOption(cx *core.Scope, label string, lang i18n.Lang, testID string) core.Node {
+	c := colorsOf(cx)
+	selected := func() bool { return s.lang.Get() == lang }
+	return base.Button{
+		OnPress:  func(core.PressEvent) { s.setLanguage(lang) },
+		Selected: selected,
+		Label:    label,
+		TestID:   testID,
+		StyleFunc: func() core.Style {
+			background := c.surface
+			if selected() {
+				background = c.text
+			}
+			return core.Style{
+				FlexGrow: 1, AlignItems: core.AlignCenter, JustifyContent: core.JustifyCenter,
+				Padding: core.Symmetric(9, 12), Background: background,
+				BorderWidth: 1, BorderColor: c.border, Hover: &core.Style{Background: c.surfaceHover},
+			}
+		},
+		Children: []core.Node{core.Text{Content: label, StyleFunc: func() core.Style {
+			color := c.text
+			if selected() {
+				color = c.surface
+			}
+			return core.Style{FontFamily: monoFont, FontSize: 10, FontWeight: core.FontWeightBold, Color: color}
+		}}},
 	}
 }
 

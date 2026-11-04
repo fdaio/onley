@@ -90,6 +90,8 @@ type state struct {
 	addingFolder *core.Signal[bool]
 	pathState    *core.Signal[pathInfo]
 	recent       *core.Signal[[]string]
+	settings     *core.Signal[bool]
+	hoveredRoot  *core.Signal[string]
 	pathTimer    *time.Timer
 	keep         *core.Signal[map[string]string]
 	keepPolicy   *core.Signal[appmodel.KeepPolicy]
@@ -167,6 +169,8 @@ func newState(cx *core.Scope, cfg Config) *state {
 		addingFolder: core.NewSignal(cx, false),
 		pathState:    core.NewSignal(cx, pathInfo{}),
 		recent:       core.NewSignalFunc(cx, loadRecent(cx), nil),
+		settings:     core.NewSignal(cx, false),
+		hoveredRoot:  core.NewSignal(cx, ""),
 		keep:         core.NewSignalFunc(cx, map[string]string{}, nil),
 		keepPolicy:   core.NewSignal(cx, policy),
 		category:     core.NewSignal(cx, categoryAll),
@@ -232,10 +236,6 @@ func (s *state) setLanguage(lang i18n.Lang) {
 	_ = s.cx.Storage().SetItem("language", string(lang))
 	s.setNote("", false)
 	s.message.Set("")
-}
-
-func (s *state) toggleLanguage() {
-	s.setLanguage(i18n.Next(s.lang.Get()))
 }
 
 func (s *state) setNote(text string, success bool) {
