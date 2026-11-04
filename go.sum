@@ -26,6 +26,8 @@ github.com/ncruces/go-strftime v1.0.0 h1:HMFp8mLCTPp341M/ZnA4qaf7ZlsbTc+miZjCLOF
 github.com/ncruces/go-strftime v1.0.0/go.mod h1:Fwc5htZGVVkseilnfgOVb9mKy6w1naJmn9CehxcKcls=
 github.com/oneo-me/nsgo v0.0.0-20261103085742-9b099f1ced76 h1:pjArTi4qEyeBRoQ8+DHSf+FyJnAsEh90/qiyZzHKpBk=
 github.com/oneo-me/nsgo v0.0.0-20261103085742-9b099f1ced76/go.mod h1:/N76gjtbqRbifDgo8XDPbzcxEqh0ZSbc5Y5a2XCp29c=
+github.com/oneo-me/nsgo v0.0.0-20261104073518-6636cf17487b h1:6BJr9BoHGfuRn5miqif6yP/Jw89+tFiwYLT5vLRhUPo=
+github.com/oneo-me/nsgo v0.0.0-20261104073518-6636cf17487b/go.mod h1:/N76gjtbqRbifDgo8XDPbzcxEqh0ZSbc5Y5a2XCp29c=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 github.com/yuin/goldmark v1.8.6 h1:d0VcaP1sx9GkFVkoW+KtggpGi2KZ965i14b0+bDQST4=
