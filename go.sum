@@ -24,8 +24,8 @@ github.com/mattn/go-isatty v0.0.22 h1:j8l17JJ9i6VGPUFUYoTUKPSgKe/83EYU2zBC7YNKMw
 github.com/mattn/go-isatty v0.0.22/go.mod h1:ZXfXG4SQHsB/w3ZeOYbR0PrPwLy+n6xiMrJlRFqopa4=
 github.com/ncruces/go-strftime v1.0.0 h1:HMFp8mLCTPp341M/ZnA4qaf7ZlsbTc+miZjCLOFAw7w=
 github.com/ncruces/go-strftime v1.0.0/go.mod h1:Fwc5htZGVVkseilnfgOVb9mKy6w1naJmn9CehxcKcls=
-github.com/oneo-me/nsgo v0.0.0-20261103085742-9b099f1ced76 h1:pjArTi4qEyeBRoQ8+DHSf+FyJnAsEh90/qiyZzHKpBk=
-github.com/oneo-me/nsgo v0.0.0-20261103085742-9b099f1ced76/go.mod h1:/N76gjtbqRbifDgo8XDPbzcxEqh0ZSbc5Y5a2XCp29c=
+github.com/oneo-me/nsgo v0.0.0-20261104080646-91127b17dafe h1:GhO+69m02btc3gPZ0y5upfa7p3j7PatH8W/ztrV0ka0=
+github.com/oneo-me/nsgo v0.0.0-20261104080646-91127b17dafe/go.mod h1:/N76gjtbqRbifDgo8XDPbzcxEqh0ZSbc5Y5a2XCp29c=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 github.com/yuin/goldmark v1.8.6 h1:d0VcaP1sx9GkFVkoW+KtggpGi2KZ965i14b0+bDQST4=

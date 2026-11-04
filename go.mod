@@ -5,7 +5,7 @@ go 1.27.3
 require (
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/mattn/go-isatty v0.0.22
-	github.com/oneo-me/nsgo v0.0.0-20261103085742-9b099f1ced76
+	github.com/oneo-me/nsgo v0.0.0-20261104080646-91127b17dafe
 	modernc.org/sqlite v1.52.0
 )
 
