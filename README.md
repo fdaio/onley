@@ -48,8 +48,8 @@ brew install --cask onley
 ```
 
 Archives are published for darwin and linux on amd64 and arm64, plus windows on
-amd64. All release assets share one `checksums.txt`. The desktop preview is also
-published for macOS arm64/x64, Windows x64 and Linux x64. See
+amd64. The desktop preview is published for macOS arm64; the
+Windows and Linux desktop apps build from source on their own systems. See
 [releases](https://github.com/fdaio/onley/releases).
 
 To build from source:
@@ -74,19 +74,19 @@ review duplicate groups, choose one copy to keep per group, and delete the rest
 after one confirmation. Folders that the deletion empties are removed too, up to
 but never including the scan root. Scanning shows a live MB/s gauge with a moving needle.
 The sidebar holds the source folders; drag a folder onto the drop zone, or click
-it to open the system folder picker. A "Type a path" link under the drop zone
+it to open the system folder picker. A "Type a path" button in the drop zone
 opens a dialog with clipboard paste and recent folders. A folder inside another selected folder is merged into its
 parent before scanning; merging uses absolute paths, so symlink aliases are not
 resolved. The header shows indexed files, duplicate groups and reclaimable
 space. The tabs filter groups by file type, and Search filters by file name or
 path. The bottom bar holds the auto-select policy: Keep newest, Keep oldest, or
-Keep by path. Each group card shows a gradient preview, file tags and the full
+Keep by path. Each group card shows a gradient preview, file tags and the
 path of every copy; the original copy is the first path. Clear drops every keep
 choice, and Review & Delete opens the confirmation. The policy never deletes
 without confirmation. It uses the same `~/.onley/local.db` index as the CLI.
 Release builds of the macOS app are signed with a Developer ID and notarized.
 Local `make app` builds are not signed. Windows code signing is in progress;
-Linux packages remain unsigned; see the note below before opening one.
+Linux builds remain unsigned; see the note below before opening one.
 
 Build and open it on macOS:
 
@@ -101,7 +101,7 @@ To install the local build, which replaces `/Applications/Onley.app`:
 make install
 ```
 
-It rebuilds the bundle first. A Homebrew cask install lives in the same place,
+It packages the app first. A Homebrew cask install lives in the same place,
 so `brew reinstall --cask onley` restores it. Set `INSTALL_DIR` to keep the two
 apart:
 
@@ -117,36 +117,40 @@ validated target in this preview.
 
 The client uses the black, paper and pink brutalist palette. It is available in
 English and Simplified Chinese. The first launch follows the system language;
-the EN/中文 button in the sidebar switches it, and the choice is remembered.
+the settings button at the right end of the tab bar opens the language choices,
+and the selection is remembered.
 UI strings live in `crates/onley-core/src/i18n.rs`; add a catalog there to
 support another language.
 
 The client is desktop-only. Mobile and web clients need an onley service API,
 which this preview does not add. The client has no `watch`, replica, `config`
-or custom `-db` support; use the CLI for those. You add folders by typing a
-path; there is no native folder picker yet. A scan or delete uses
+or custom `-db` support; use the CLI for those. Click the drop zone to open the
+system folder picker, drag a folder onto it, or type a path. A scan or delete uses
 the default index only, and deletion is permanent. The app verifies each
 file's size and modification time before deleting it; an index from an older
 onley needs one rescan to record mtimes. The client never deletes its own
 running executable. If Onley is in a duplicate group, it must stay as the copy
-to keep; Windows locks the running executable. On Windows and Linux the native
-menu bar hides until Alt; the system draws it, so it does not use the app
-palette. On macOS the menu bar follows the system appearance; use Dark Mode to
-match the Midnight Terminal window.
+to keep; Windows locks the running executable. The client sets the window title
+and uses NSH's default application menu.
 Release builds of the macOS app are signed with a Developer ID and notarized,
 so Gatekeeper opens them normally. Local `make app` builds are not signed.
-Windows code signing is in progress; Linux packages are unsigned.
+Windows code signing is in progress; Linux builds are unsigned.
 On Windows, SmartScreen may warn, and Smart App Control can block an unsigned
 app. On Linux, verify the release checksum before opening the package.
 Third-party notices are in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-Headless tests run with the rest of the repository. Native macOS UI tests need
-Xcode:
+Headless tests run with the rest of the repository:
 
 ```sh
-go test ./...
-cd cmd/onley-app && go tool nsgo test -target macos
+cargo test --workspace
+```
+
+The real-window UI test needs macOS, Xcode and the `nsh` command. The script
+prepares a temporary index and removes the files it deletes:
+
+```sh
+./scripts/real-window-test.sh
 ```
 
 ## Code signing policy
