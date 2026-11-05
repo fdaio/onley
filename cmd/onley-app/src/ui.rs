@@ -119,14 +119,29 @@ fn header(s: &State, compact: bool) -> impl IntoElement + use<> {
     let state = s.clone();
     view()
         .w_full()
+        .bg(theme::SURFACE)
+        .border_b_1()
+        .border_color(theme::BORDER)
+        .child(
+            when(move || window().width.0 < 720.0, {
+                let state = state.clone();
+                move || header_narrow(&state)
+            })
+            .otherwise({
+                let state = state.clone();
+                move || header_wide(&state, compact)
+            }),
+        )
+}
+
+fn header_wide(s: &State, compact: bool) -> impl IntoElement + use<> {
+    view()
+        .w_full()
         .h(px(if compact { 56.0 } else { 64.0 }))
         .flex_row()
         .items_center()
         .gap(px(14.0))
         .px(px(16.0))
-        .bg(theme::SURFACE)
-        .border_b_1()
-        .border_color(theme::BORDER)
         .child(
             text("ONLEY")
                 .font_family(theme::DISPLAY_FONT)
@@ -158,28 +173,72 @@ fn header(s: &State, compact: bool) -> impl IntoElement + use<> {
                     "duplicate-summary",
                 )),
         )
-        .child(search_input(s, compact))
-        .child(
-            press("filters", false, move || state.filters.set(true))
-                .px(px(10.0))
-                .py(px(8.0))
-                .border_1()
-                .border_color(theme::BORDER)
-                .child(text_line("FILTERS", 8.0, FontWeight::BOLD, theme::TEXT)),
-        )
+        .child(search_input(s, compact, false))
+        .child(filters_button(s))
         .child(rescan_button(s))
         .child(primary_action(s))
+        .child(settings_button(s))
+}
+
+fn header_narrow(s: &State) -> impl IntoElement + use<> {
+    let state = s.clone();
+    view()
+        .w_full()
         .child(
-            press("settings", false, move || state.settings.set(true))
-                .w(px(36.0))
-                .h(px(36.0))
+            view()
+                .w_full()
+                .h(px(52.0))
+                .flex_row()
                 .items_center()
-                .justify_center()
-                .bg(theme::SURFACE)
-                .border_1()
-                .border_color(theme::BORDER)
-                .child(text_line("⚙", 15.0, FontWeight::NORMAL, theme::TEXT)),
+                .gap(px(10.0))
+                .px(px(12.0))
+                .child(
+                    text("ONLEY")
+                        .font_family(theme::DISPLAY_FONT)
+                        .text_size(px(24.0))
+                        .text_color(theme::TEXT),
+                )
+                .child(view().flex_1())
+                .child(primary_action(s))
+                .child(settings_button(s)),
         )
+        .child(
+            view()
+                .w_full()
+                .h(px(44.0))
+                .flex_row()
+                .items_center()
+                .gap(px(8.0))
+                .px(px(12.0))
+                .border_t_1()
+                .border_color(theme::BORDER)
+                .child(search_input(s, true, true))
+                .child(filters_button(&state))
+                .child(rescan_button(&state)),
+        )
+}
+
+fn filters_button(s: &State) -> impl IntoElement + use<> {
+    let state = s.clone();
+    press("filters", false, move || state.filters.set(true))
+        .px(px(10.0))
+        .py(px(8.0))
+        .border_1()
+        .border_color(theme::BORDER)
+        .child(text_line("FILTERS", 8.0, FontWeight::BOLD, theme::TEXT))
+}
+
+fn settings_button(s: &State) -> impl IntoElement + use<> {
+    let state = s.clone();
+    press("settings", false, move || state.settings.set(true))
+        .w(px(36.0))
+        .h(px(36.0))
+        .items_center()
+        .justify_center()
+        .bg(theme::SURFACE)
+        .border_1()
+        .border_color(theme::BORDER)
+        .child(text_line("⚙", 15.0, FontWeight::NORMAL, theme::TEXT))
 }
 
 fn stat_inline(
@@ -205,11 +264,10 @@ fn stat_inline(
         )
 }
 
-fn search_input(s: &State, compact: bool) -> impl IntoElement + use<> {
+fn search_input(s: &State, compact: bool, fill: bool) -> impl IntoElement + use<> {
     let state = s.clone();
-    input()
+    let field = input()
         .test_id("search-input")
-        .w(px(if compact { 150.0 } else { 210.0 }))
         .h(px(32.0))
         .px(px(9.0))
         .py(px(5.0))
@@ -228,7 +286,12 @@ fn search_input(s: &State, compact: bool) -> impl IntoElement + use<> {
         .on_change({
             let state = state.clone();
             move |value: &str| state.set_query(value)
-        })
+        });
+    if fill {
+        field.flex_1()
+    } else {
+        field.w(px(if compact { 150.0 } else { 210.0 }))
+    }
 }
 
 fn primary_action(s: &State) -> impl IntoElement + use<> {
@@ -337,10 +400,19 @@ fn type_row(s: &State, category: Category) -> impl IntoElement + use<> {
     ))
 }
 
+fn header_height(compact: bool) -> f32 {
+    if window().width.0 < 720.0 {
+        96.0
+    } else if compact {
+        56.0
+    } else {
+        64.0
+    }
+}
+
 fn body(s: &State, compact: bool) -> impl IntoElement + use<> {
     let size = window();
-    let header = if compact { 56.0 } else { 64.0 };
-    let height = (size.height.0 - header).max(0.0);
+    let height = (size.height.0 - header_height(compact)).max(0.0);
     view()
         .w_full()
         .h(px(height))

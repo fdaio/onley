@@ -156,6 +156,25 @@ fn the_empty_state_offers_a_scan() {
 }
 
 #[test]
+fn a_narrow_window_keeps_the_actions_visible() {
+    let _guard = TEST_LOCK
+        .lock()
+        .unwrap_or_else(|poison| poison.into_inner());
+    let fixture = Fixture::empty();
+    onley_app::set_config(fixture.config());
+    let mut engine = EngineConfig::new(Root::of::<onley_app::App>());
+    engine.viewport = Size {
+        width: Points(560.0),
+        height: Points(800.0),
+    };
+    let mut app = Headless::start(engine).expect("the app starts");
+    app.wait_for("id:search-input").unwrap();
+    app.wait_for("id:filters").unwrap();
+    app.wait_for("id:settings").unwrap();
+    app.wait_for("id:scan-button").unwrap();
+}
+
+#[test]
 fn scan_finds_duplicates() {
     let fixture = Fixture::with(&[
         ("one.txt", b"same-bytes", 100),
