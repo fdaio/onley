@@ -123,9 +123,10 @@ and the selection is remembered.
 UI strings live in `crates/onley-core/src/i18n.rs`; add a catalog there to
 support another language.
 
-The client is desktop-only. Mobile and web clients need an onley service API,
-which this preview does not add. The client has no `watch`, replica, `config`
-or custom `-db` support; use the CLI for those. Click the drop zone to open the
+The desktop client is desktop-only. An iOS photo-dedupe preview lives in
+`cmd/onley-mobile`; mobile and web clients that browse a desktop index still
+need an onley service API, which this preview does not add. The client has no
+`watch`, replica, `config` or custom `-db` support; use the CLI for those. Click the drop zone to open the
 system folder picker, drag a folder onto it, or type a path. A scan or delete uses
 the default index only, and deletion is permanent. The app verifies each
 file's size and modification time before deleting it; an index from an older

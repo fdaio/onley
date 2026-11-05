@@ -1,0 +1,9 @@
+{
+  "name": "Onley Photos",
+  "id": "io.github.laotree.onley.photos",
+  "version": "0.1.0",
+  "build": 1,
+  "appearance": "light",
+  "rust": ".",
+  "root": "App"
+}
