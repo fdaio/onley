@@ -18,10 +18,10 @@ Website: https://fdaio.github.io/onley/ · [中文](https://fdaio.github.io/onle
 - MD5-based duplicate detection across a directory tree
 - SQLite index stored locally
 - Resume support: unchanged files (same size + mtime) are skipped on re-scan
-- Concurrent scanning via a configurable goroutine worker pool
+- Concurrent scanning via a configurable worker pool
 - Continuous indexing (`watch`): the index follows files as they are created, changed and deleted
 - Interactive cleanup (`clean`) or automatic cleanup (`clean-all`)
-- NSGo desktop client for scanning and cleanup, with multi-folder scans (preview)
+- NSH desktop client for scanning and cleanup, with multi-folder scans (preview)
 - Multi-machine mode: a replica compares its local index against a master and either deletes local copies or migrates unique files to the master over HTTP
 
 ## Install
@@ -52,10 +52,6 @@ amd64. All release assets share one `checksums.txt`. The desktop preview is also
 published for macOS arm64/x64, Windows x64 and Linux x64. See
 [releases](https://github.com/fdaio/onley/releases).
 
-`go install` does not work and is not offered: the module path is `onley`, which
-is not a resolvable repository location. Fixing that means changing the import
-path of every package, so it has not been done.
-
 To build from source:
 
 ```sh
@@ -73,7 +69,7 @@ brew tap laotree/tap
 brew install --cask onley
 ```
 
-The NSGo desktop client covers the daily cleanup loop: scan one or more folders,
+The NSH desktop client covers the daily cleanup loop: scan one or more folders,
 review duplicate groups, choose one copy to keep per group, and delete the rest
 after one confirmation. Folders that the deletion empties are removed too, up to
 but never including the scan root. Scanning shows a live MB/s gauge with a moving needle.
@@ -96,10 +92,7 @@ Build and open it on macOS:
 
 ```sh
 make app
-# Apple silicon
-open cmd/onley-app/dist/Onley-0.2.16-macos_arm64/Onley.app
-# Intel
-open cmd/onley-app/dist/Onley-0.2.16-macos_x64/Onley.app
+open dist/Onley.app
 ```
 
 To install the local build, which replaces `/Applications/Onley.app`:
@@ -116,18 +109,17 @@ apart:
 make install INSTALL_DIR="$HOME/Applications"
 ```
 
-Building the app needs Go 1.27.3 and Xcode; NSGo is pinned in `go.mod`.
-NSGo is early and has no stable API, so upgrade it as a separate task.
-`make app` builds for this Mac's architecture; `make app-all` packages macOS,
-Windows and Linux builds. The macOS app is the validated target in this
-preview. The Windows and Linux builds compile and package, but have not been
-run yet.
+Building the app needs Rust 1.88 or newer, the `nsh` command and Xcode. The
+pinned NSH version is in `Cargo.toml`. NSH is early and has no stable API, so
+upgrade it as a separate task. `make app` packages the macOS app. The Windows
+and Linux desktop builds run on their own systems; the macOS app is the
+validated target in this preview.
 
 The client uses the black, paper and pink brutalist palette. It is available in
 English and Simplified Chinese. The first launch follows the system language;
 the EN/中文 button in the sidebar switches it, and the choice is remembered.
-UI strings live in `internal/i18n`; add a catalog there to support another
-language.
+UI strings live in `crates/onley-core/src/i18n.rs`; add a catalog there to
+support another language.
 
 The client is desktop-only. Mobile and web clients need an onley service API,
 which this preview does not add. The client has no `watch`, replica, `config`
@@ -291,7 +283,7 @@ How it behaves:
   is not probed every 30 seconds.
 - A master that cannot be reached does not stop the indexing.
 
-Uploads run on their own goroutine. They have to: the watcher's event channel is
+Uploads run on their own thread. They have to: the watcher's event channel is
 bounded and drops events when it fills, so an upload running in the indexing loop
 would cost index entries silently rather than merely slow down.
 
@@ -440,9 +432,8 @@ client should not depend on `Content-Length` being present.
 
 ```sh
 make test       # run all tests
-make coverage   # test with coverage report → coverage.html
-make lint       # golangci-lint
-make clean      # remove binary and coverage files
+make lint       # cargo fmt --check and cargo clippy
+make clean      # remove build output
 ```
 
-Requirements: Go 1.27.3 or newer (the version the module declares)
+Requirements: Rust 1.88 or newer (the version `Cargo.toml` declares)

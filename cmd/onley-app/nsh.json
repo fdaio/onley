@@ -1,0 +1,9 @@
+{
+  "name": "Onley",
+  "id": "io.github.laotree.onley",
+  "version": "0.2.16",
+  "appearance": "light",
+  "icon": "assets/Icon.png",
+  "rust": ".",
+  "root": "App"
+}

@@ -1,3 +1,4 @@
+/target
 /onley
 /onley-app
 *.db
@@ -6,6 +7,8 @@
 *.db-shm
 coverage.out
 coverage.html
+/dist
 /cmd/onley-app/dist/
-/.nsgo/
-/cmd/onley-app/.nsgo/
+/cmd/onley-app/.nsh/
+/cmd/onley-app/target/
+/.nsh/
