@@ -10,6 +10,9 @@ stays the validated target.
   temporary file, hashes it, and deletes the copies the user does not keep.
 - **Android**: a separate native SAF app lives in `cmd/onley-android`. This
   NSH app stays iOS-only; `src/source/android.rs` points Android users there.
+  Upstream NSH requests: [longbridge/nsh#162](https://github.com/longbridge/nsh/issues/162)
+  (folder picker) and [longbridge/nsh#915](https://github.com/longbridge/nsh/issues/915)
+  (manifest permissions).
 - **Desktop preview**: the same screen runs on macOS with a folder backend.
 
 ## Build and run
