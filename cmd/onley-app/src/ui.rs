@@ -1413,7 +1413,7 @@ fn policy_option(
 ) -> impl IntoElement + use<> {
     let state = s.clone();
     let selected = s.policy_selected(policy);
-    let disabled = s.scanning.get() || s.busy.get() || s.groups.get().is_empty();
+    let disabled = s.busy.get() || s.groups.get().is_empty();
     press(test_id, disabled, move || state.apply_keep_policy(policy))
         .flex_row()
         .items_center()
