@@ -73,7 +73,7 @@ jobs:
           - os: windows
             arch: amd64
             runner: windows-latest
-    fail-fast: false
+      fail-fast: false
 
     steps:
       - uses: actions/checkout@v6
