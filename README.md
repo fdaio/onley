@@ -48,7 +48,8 @@ brew install --cask onley
 ```
 
 Archives are published for darwin and linux on amd64 and arm64, plus windows on
-amd64. The desktop preview is published for macOS arm64; the
+amd64. All release assets share one `checksums.txt`. The desktop preview is
+published for macOS arm64; the
 Windows and Linux desktop apps build from source on their own systems. See
 [releases](https://github.com/fdaio/onley/releases).
 
