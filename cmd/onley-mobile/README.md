@@ -11,7 +11,8 @@ stays the validated target.
 - **Android**: a separate native SAF app lives in `cmd/onley-android`. This
   NSH app stays iOS-only; `src/source/android.rs` points Android users there.
   Upstream NSH requests: [longbridge/nsh#162](https://github.com/longbridge/nsh/issues/162)
-  (folder picker) and [longbridge/nsh#915](https://github.com/longbridge/nsh/issues/915)
+  (folder picker; [PR #946](https://github.com/longbridge/nsh/pull/946) covers
+  files only) and [longbridge/nsh#915](https://github.com/longbridge/nsh/issues/915)
   (manifest permissions).
 - **Desktop preview**: the same screen runs on macOS with a folder backend.
 

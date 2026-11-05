@@ -50,7 +50,8 @@ The tests cover grouping, the keep policy, reclaimable space and formatting.
   Android package writes only the INTERNET permission and has no Activity
   result hook for SAF, so the Android client is Java. Upstream requests:
   [longbridge/nsh#162](https://github.com/longbridge/nsh/issues/162) (folder
-  picker) and
+  picker; [PR #946](https://github.com/longbridge/nsh/pull/946) covers files
+  only) and
   [longbridge/nsh#915](https://github.com/longbridge/nsh/issues/915) (manifest
   permissions). If NSH adds a folder picker, this client can move back to the
   shared NSH UI.
