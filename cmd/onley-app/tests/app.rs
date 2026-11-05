@@ -137,9 +137,32 @@ fn wait_keeps(app: &mut Headless, name: &str) {
     .unwrap_or_else(|err| panic!("{err}"));
 }
 
+/// Runs frames until the screen no longer shows `needle`.
+fn wait_gone(app: &mut Headless, needle: &str) {
+    app.wait_until(
+        &format!("{needle} gone"),
+        Duration::from_secs(10),
+        |screen| !screen.texts().iter().any(|text| text.contains(needle)),
+    )
+    .unwrap_or_else(|err| panic!("{err}"));
+}
+
+/// Runs frames until the scan ends and the header settles.
+fn wait_for_scan(app: &mut Headless) {
+    app.wait_for_gone("id:scan-strip", Duration::from_secs(30))
+        .unwrap_or_else(|err| panic!("{err}"));
+    app.wait_for("id:delete-files").unwrap();
+}
+
 /// Opens settings, applies a keep policy, and closes settings.
 fn set_policy(app: &mut Headless, id: &str) {
+    let _ = app.wait_for_gone("id:scan-strip", Duration::from_secs(10));
     app.press("id:settings").unwrap();
+    if app.wait_for("id:settings-dialog").is_err() {
+        // The scan can rebuild the view between the press and the render.
+        app.press("id:settings").unwrap();
+        app.wait_for("id:settings-dialog").unwrap();
+    }
     app.wait_for(&format!("id:{id}")).unwrap();
     app.press(&format!("id:{id}")).unwrap();
     app.press("id:settings-close").unwrap();
@@ -227,6 +250,7 @@ fn category_tabs_filter_groups() {
     let mut app = start(fixture.config(), &[], "en-US");
     app.app.wait_for("id:scan-button").unwrap();
     app.app.press("id:scan-button").unwrap();
+    wait_for_scan(&mut app.app);
     wait_contains(&mut app.app, "a.jpg");
     assert!(has(&mut app.app, "a.pdf"));
 
@@ -253,14 +277,10 @@ fn search_filters_by_name() {
         ("delta.pdf", b"doc-bytes", 100),
     ]);
     let mut app = start(fixture.config(), &[], "en-US");
-    app.app.wait_for("id:scan-button").unwrap();
-    app.app.press("id:scan-button").unwrap();
-    wait_contains(&mut app.app, "alpha.jpg");
-
     app.app.wait_for("id:search-input").unwrap();
     app.app.type_text("id:search-input", "gamma").unwrap();
+    wait_gone(&mut app.app, "alpha.jpg");
     wait_contains(&mut app.app, "gamma.pdf");
-    assert!(!has(&mut app.app, "alpha.jpg"));
 }
 
 #[test]
@@ -272,6 +292,7 @@ fn keep_policy_selects_one_copy_per_group() {
     let mut app = start(fixture.config(), &[], "en-US");
     app.app.wait_for("id:scan-button").unwrap();
     app.app.press("id:scan-button").unwrap();
+    wait_for_scan(&mut app.app);
     wait_contains(&mut app.app, "old.txt");
 
     app.app.press("id:settings").unwrap();
@@ -327,6 +348,7 @@ fn remove_folder_hides_its_groups() {
     let mut app = start(fixture.config(), &[], "en-US");
     app.app.wait_for("id:scan-button").unwrap();
     app.app.press("id:scan-button").unwrap();
+    wait_for_scan(&mut app.app);
     wait_contains(&mut app.app, "one.txt");
 
     let root = fixture.dir.path().to_string_lossy().into_owned();
