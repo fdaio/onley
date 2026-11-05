@@ -1,6 +1,7 @@
 [workspace]
 resolver = "3"
 members = ["crates/onley-core", "cmd/onley", "cmd/onley-app"]
+exclude = ["cmd/onley-mobile"]
 
 [workspace.package]
 version = "0.2.16"

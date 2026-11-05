@@ -1,0 +1,51 @@
+[package]
+name = "onley-mobile"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+md-5 = "0.10"
+env_logger = "0.11"
+nsh-core = { git = "https://github.com/longbridge/nsh", tag = "v0.4.0" }
+nsh-base = { git = "https://github.com/longbridge/nsh", tag = "v0.4.0" }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+nsh-platform-macos = { git = "https://github.com/longbridge/nsh", tag = "v0.4.0", default-features = false }
+
+[target.'cfg(target_os = "ios")'.dependencies]
+nsh-platform-ios = { git = "https://github.com/longbridge/nsh", tag = "v0.4.0", default-features = false }
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", features = [
+    "NSArray",
+    "NSDate",
+    "NSError",
+    "NSEnumerator",
+    "NSIndexSet",
+    "NSObject",
+    "NSString",
+    "NSURL",
+] }
+objc2-photos = { version = "0.3", features = [
+    "PHAsset",
+    "PHAssetChangeRequest",
+    "PHChangeRequest",
+    "PHAssetResource",
+    "PHAssetResourceManager",
+    "PHFetchOptions",
+    "PHFetchResult",
+    "PHObject",
+    "PHPhotoLibrary",
+    "PhotosTypes",
+    "block2",
+    "dispatch2",
+] }
+block2 = "0.6"
+dispatch2 = "0.3"
+
+[dev-dependencies]
+nsh-engine = { git = "https://github.com/longbridge/nsh", tag = "v0.4.0" }
+nsh-testing = { git = "https://github.com/longbridge/nsh", tag = "v0.4.0" }
+tempfile = "3"

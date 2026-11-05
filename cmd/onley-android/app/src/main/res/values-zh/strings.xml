@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Onley 照片</string>
+    <string name="tagline">在你选择的文件夹里找出重复照片。</string>
+    <string name="select_folder">选择文件夹</string>
+    <string name="scan">扫描</string>
+    <string name="scanning">扫描中…</string>
+    <string name="delete_n">删除 %1$d 张副本</string>
+    <string name="summary">%1$d 组重复 · %2$d 张副本 · 可释放 %3$s</string>
+    <string name="keep">保留：%1$s</string>
+    <string name="keep_one">选择要保留的副本</string>
+    <string name="confirm_title">删除重复照片？</string>
+    <string name="confirm_message">保留的那张不会动，其余会从这个文件夹中删除。</string>
+    <string name="delete">删除</string>
+    <string name="cancel">取消</string>
+    <string name="no_folder">请先选择文件夹。</string>
+    <string name="no_photos">这个文件夹里没有照片。</string>
+    <string name="no_duplicates">没有重复照片。</string>
+    <string name="scan_done">扫描完成。</string>
+    <string name="scan_failed">部分照片无法读取。</string>
+    <string name="permission_revoked">文件夹权限已失效，请重新选择文件夹。</string>
+    <string name="deleted">已删除 %1$d 张副本。</string>
+    <string name="delete_failed">部分副本删除失败。</string>
+    <string name="keep_newest">保留最新</string>
+    <string name="keep_oldest">保留最旧</string>
+    <string name="copies">%1$d 张副本</string>
+    <string name="details">%1$s · %2$s</string>
+    <string name="folder">文件夹：%1$s</string>
+    <string name="failed">%1$d 张失败</string>
+</resources>

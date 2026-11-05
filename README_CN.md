@@ -116,7 +116,8 @@ make install INSTALL_DIR="$HOME/Applications"
 简体中文，首次启动跟随系统语言；顶部工具栏的设置按钮可打开语言选择，选择会被记住。
 文案位于 `crates/onley-core/src/i18n.rs`，新增语言目录即可扩展。
 
-手机与 Web 客户端需要 onley 提供本地服务 API，本预览不做。
+手机与 Web 客户端中，浏览桌面索引的版本仍需要 onley 提供本地服务 API，本预览不做；
+iOS 相册去重预览位于 `cmd/onley-mobile`，Android SAF 预览位于 `cmd/onley-android`。
 客户端不支持 `watch`、replica、`config` 和自定义 `-db`，这些继续用 CLI。
 点击拖放区可打开系统文件夹选择器，也可拖入文件夹；「输入路径」按钮会打开带剪贴板粘贴与
 最近目录的对话框。扫描与删除只操作默认
