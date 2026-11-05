@@ -111,7 +111,7 @@ jobs:
           else
             cp "$TARGET_DIR/onley" "$BINARY"
           fi
-          echo "binary=$BINARY" >> "$GITHUB_ENV"
+          echo "BINARY=$BINARY" >> "$GITHUB_ENV"
 
       - name: Package archive
         shell: bash
