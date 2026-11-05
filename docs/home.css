@@ -270,6 +270,20 @@ h1 {
   height: auto;
   border-radius: 11px;
 }
+.shot-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px;
+}
+.shot-card { margin: 0; }
+.shot-card .shot-frame { box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45); }
+.shot-card figcaption {
+  margin-top: 16px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.7;
+}
 
 .section {
   max-width: var(--max);
@@ -595,6 +609,7 @@ h1 {
   .feature-grid { grid-template-columns: minmax(0, 1fr); }
   .feature-card { min-height: 0; }
   .icon-box { margin-bottom: 28px; }
+  .shot-grid { grid-template-columns: minmax(0, 1fr); }
 
   .footer-top {
     grid-template-columns: 1fr 1fr;
