@@ -8,10 +8,8 @@ stays the validated target.
 
 - **iOS**: the PhotoKit backend lists the library, exports each photo to a
   temporary file, hashes it, and deletes the copies the user does not keep.
-- **Android**: not implemented. The standalone NSH package writes a manifest
-  with only the INTERNET permission, and Android 11+ deletes media through a
-  system consent flow that needs an Activity. A native host app is required;
-  `src/source/android.rs` is a placeholder that keeps the shared app building.
+- **Android**: a separate native SAF app lives in `cmd/onley-android`. This
+  NSH app stays iOS-only; `src/source/android.rs` points Android users there.
 - **Desktop preview**: the same screen runs on macOS with a folder backend.
 
 ## Build and run
@@ -62,7 +60,8 @@ the right id. The scanner and folder backend have their own unit tests.
 
 ## Limitations
 
-- iOS only. Android needs a native host app; see the status above.
+- iOS only. Android has its own SAF app in `cmd/onley-android`; see that
+  README for its build and limits.
 - iCloud-only photos are skipped because export does not request network
   access. A later version can enable it and show download progress.
 - No thumbnails yet. Groups show names, sizes, dimensions and dates.

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Onley Photos</string>
+    <string name="tagline">Find duplicate photos in a folder you choose.</string>
+    <string name="select_folder">SELECT FOLDER</string>
+    <string name="scan">SCAN</string>
+    <string name="scanning">Scanning…</string>
+    <string name="delete_n">DELETE %1$d COPIES</string>
+    <string name="summary">%1$d groups · %2$d copies · %3$s reclaimable</string>
+    <string name="keep">Keep: %1$s</string>
+    <string name="keep_one">Keep one copy</string>
+    <string name="confirm_title">Delete duplicate photos?</string>
+    <string name="confirm_message">The kept copy stays. The others are deleted from this folder.</string>
+    <string name="delete">DELETE</string>
+    <string name="cancel">CANCEL</string>
+    <string name="no_folder">Choose a folder first.</string>
+    <string name="no_photos">No photos in this folder.</string>
+    <string name="no_duplicates">No duplicate photos.</string>
+    <string name="scan_done">Scan finished.</string>
+    <string name="scan_failed">Some photos could not be read.</string>
+    <string name="permission_revoked">The folder permission was revoked. Choose the folder again.</string>
+    <string name="deleted">Deleted %1$d copies.</string>
+    <string name="delete_failed">Could not delete some copies.</string>
+    <string name="keep_newest">KEEP NEWEST</string>
+    <string name="keep_oldest">KEEP OLDEST</string>
+    <string name="copies">%1$d copies</string>
+    <string name="details">%1$s · %2$s</string>
+    <string name="folder">Folder: %1$s</string>
+    <string name="failed">%1$d failed</string>
+</resources>

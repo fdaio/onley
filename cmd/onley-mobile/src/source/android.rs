@@ -1,9 +1,8 @@
 //! Android photo access.
 //!
-//! The standalone Android package NSH writes declares only the INTERNET
-//! permission, and Android 11+ deletes media through a system consent flow
-//! that needs an Activity. Both need a native host app; this placeholder
-//! keeps the shared app building for Android and tells the user why.
+//! The Android client is the native SAF app in `cmd/onley-android`. This NSH
+//! screen is iOS-only; this placeholder keeps it building for Android and
+//! tells the user where to go.
 
 use super::{Access, AssetMeta, PhotoLibrary};
 use std::path::{Path, PathBuf};
@@ -16,8 +15,7 @@ impl AndroidLibrary {
     }
 }
 
-const NEEDS_HOST: &str =
-    "Android photo access needs a native host app; see cmd/onley-mobile/README.md";
+const NEEDS_HOST: &str = "Android uses the SAF app in cmd/onley-android; this NSH app is iOS-only";
 
 impl PhotoLibrary for AndroidLibrary {
     fn access(&self) -> Access {
