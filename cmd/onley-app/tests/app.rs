@@ -110,6 +110,16 @@ fn wait_contains(app: &mut Headless, needle: &str) {
     .unwrap_or_else(|err| panic!("{err}"));
 }
 
+/// Opens settings, applies a keep policy, and closes settings.
+fn set_policy(app: &mut Headless, id: &str) {
+    app.press("id:settings").unwrap();
+    app.wait_for(&format!("id:{id}")).unwrap();
+    app.press(&format!("id:{id}")).unwrap();
+    app.press("id:settings-close").unwrap();
+    app.wait_for_gone("id:settings-dialog", Duration::from_secs(5))
+        .unwrap();
+}
+
 #[test]
 fn shows_the_chinese_empty_state() {
     let fixture = Fixture::empty();
@@ -141,7 +151,7 @@ fn the_empty_state_offers_a_scan() {
     let fixture = Fixture::empty();
     let mut app = start(fixture.config(), &[], "en-US");
     app.app.wait_for("id:empty-state").unwrap();
-    app.app.wait_for("id:empty-scan").unwrap();
+    app.app.wait_for("id:scan-button").unwrap();
     assert!(has(&mut app.app, "NO DUPLICATES YET"));
 }
 
@@ -174,11 +184,16 @@ fn category_tabs_filter_groups() {
     wait_contains(&mut app.app, "a.jpg");
     assert!(has(&mut app.app, "a.pdf"));
 
+    app.app.press("id:filters").unwrap();
+    app.app.wait_for("id:tab:images").unwrap();
     app.app.press("id:tab:images").unwrap();
+    app.app.press("id:filters-close").unwrap();
     wait_contains(&mut app.app, "a.jpg");
     assert!(!has(&mut app.app, "a.pdf"));
 
+    app.app.press("id:filters").unwrap();
     app.app.press("id:tab:documents").unwrap();
+    app.app.press("id:filters-close").unwrap();
     wait_contains(&mut app.app, "a.pdf");
     assert!(!has(&mut app.app, "a.jpg"));
 }
@@ -196,7 +211,6 @@ fn search_filters_by_name() {
     app.app.press("id:scan-button").unwrap();
     wait_contains(&mut app.app, "alpha.jpg");
 
-    app.app.press("id:tab:search").unwrap();
     app.app.wait_for("id:search-input").unwrap();
     app.app.type_text("id:search-input", "gamma").unwrap();
     wait_contains(&mut app.app, "gamma.pdf");
@@ -214,6 +228,8 @@ fn keep_policy_selects_one_copy_per_group() {
     app.app.press("id:scan-button").unwrap();
     wait_contains(&mut app.app, "old.txt");
 
+    app.app.press("id:settings").unwrap();
+    app.app.wait_for("id:policy-newest").unwrap();
     app.app.press("id:policy-newest").unwrap();
     wait_contains(&mut app.app, "(1 FILE)");
     app.app.press("id:policy-oldest").unwrap();
@@ -235,8 +251,12 @@ fn remove_folder_hides_its_groups() {
     wait_contains(&mut app.app, "one.txt");
 
     let root = fixture.dir.path().to_string_lossy().into_owned();
-    app.app.wait_for(&format!("id:folder:{root}")).unwrap();
+    app.app.press("id:filters").unwrap();
+    app.app
+        .wait_for(&format!("id:remove-folder:{root}"))
+        .unwrap();
     app.app.press(&format!("id:remove-folder:{root}")).unwrap();
+    app.app.press("id:filters-close").unwrap();
     wait_contains(&mut app.app, "NO DUPLICATES YET");
 }
 
@@ -247,10 +267,12 @@ fn adding_a_folder_merges_a_child_into_its_parent() {
     let child = parent.join("child");
     std::fs::create_dir_all(&child).unwrap();
     let mut app = start(fixture.config(), &[], "en-US");
-    app.app.wait_for("id:type-path").unwrap();
+    app.app.wait_for("id:filters").unwrap();
 
     for path in [&parent, &child] {
-        app.app.press("id:type-path").unwrap();
+        app.app.press("id:filters").unwrap();
+        app.app.wait_for("id:add-folder").unwrap();
+        app.app.press("id:add-folder").unwrap();
         app.app.wait_for("id:scan-path").unwrap();
         app.app
             .type_text("id:scan-path", &path.to_string_lossy())
@@ -261,7 +283,9 @@ fn adding_a_folder_merges_a_child_into_its_parent() {
             .wait_for_gone("id:add-folder-dialog", Duration::from_secs(5))
             .unwrap();
     }
+    app.app.press("id:filters").unwrap();
     wait_contains(&mut app.app, "(01)");
+    app.app.press("id:filters-close").unwrap();
 }
 
 #[test]
@@ -274,7 +298,7 @@ fn delete_removes_the_extra_copy_and_the_empty_folder() {
     app.app.wait_for("id:scan-button").unwrap();
     app.app.press("id:scan-button").unwrap();
     wait_contains(&mut app.app, "one.txt");
-    app.app.press("id:policy-path").unwrap();
+    set_policy(&mut app.app, "policy-path");
     wait_contains(&mut app.app, "(1 FILE)");
     app.app.press("id:delete-files").unwrap();
     app.app.wait_for("id:confirm-dialog").unwrap();
@@ -296,7 +320,7 @@ fn delete_stops_when_the_copy_to_keep_is_gone() {
     app.app.wait_for("id:scan-button").unwrap();
     app.app.press("id:scan-button").unwrap();
     wait_contains(&mut app.app, "one.txt");
-    app.app.press("id:policy-path").unwrap();
+    set_policy(&mut app.app, "policy-path");
     wait_contains(&mut app.app, "(1 FILE)");
 
     std::fs::remove_file(fixture.dir.path().join("one.txt")).unwrap();
@@ -317,7 +341,7 @@ fn delete_skips_a_file_that_changed() {
     app.app.wait_for("id:scan-button").unwrap();
     app.app.press("id:scan-button").unwrap();
     wait_contains(&mut app.app, "one.txt");
-    app.app.press("id:policy-path").unwrap();
+    set_policy(&mut app.app, "policy-path");
     wait_contains(&mut app.app, "(1 FILE)");
 
     std::fs::write(fixture.dir.path().join("two.txt"), b"changed and longer").unwrap();
@@ -338,7 +362,7 @@ fn delete_reports_a_copy_that_is_already_gone() {
     app.app.wait_for("id:scan-button").unwrap();
     app.app.press("id:scan-button").unwrap();
     wait_contains(&mut app.app, "one.txt");
-    app.app.press("id:policy-path").unwrap();
+    set_policy(&mut app.app, "policy-path");
     wait_contains(&mut app.app, "(1 FILE)");
 
     std::fs::remove_file(fixture.dir.path().join("two.txt")).unwrap();
@@ -360,7 +384,7 @@ fn the_running_executable_is_never_deleted() {
     app.app.wait_for("id:scan-button").unwrap();
     app.app.press("id:scan-button").unwrap();
     wait_contains(&mut app.app, "one.txt");
-    app.app.press("id:policy-newest").unwrap();
+    set_policy(&mut app.app, "policy-newest");
     wait_contains(&mut app.app, "1 FILE");
     app.app.press("id:delete-files").unwrap();
     app.app.wait_for("id:confirm-dialog").unwrap();
@@ -371,18 +395,35 @@ fn the_running_executable_is_never_deleted() {
 }
 
 #[test]
-fn the_scan_panel_shows_the_gauge_and_can_be_canceled() {
+fn the_scan_strip_shows_progress_and_can_be_canceled() {
     let fixture = Fixture::empty();
     let big = std::fs::File::create(fixture.dir.path().join("big.bin")).unwrap();
     big.set_len(1 << 30).unwrap();
     let mut app = start(fixture.config(), &[], "en-US");
     app.app.wait_for("id:scan-button").unwrap();
     app.app.press("id:scan-button").unwrap();
-    app.app.wait_for("id:speed-gauge").unwrap();
+    app.app.wait_for("id:scan-strip").unwrap();
     app.app.wait_for("id:scan-speed").unwrap();
     if app.app.press("id:cancel-scan").is_ok() {
         wait_contains(&mut app.app, "Scan canceled");
     }
+}
+
+#[test]
+fn the_list_stays_visible_while_scanning() {
+    let fixture = Fixture::with(&[
+        ("one.txt", b"same-bytes", 100),
+        ("two.txt", b"same-bytes", 100),
+    ]);
+    let big = std::fs::File::create(fixture.dir.path().join("big.bin")).unwrap();
+    big.set_len(1 << 30).unwrap();
+    let mut app = start(fixture.config(), &[], "en-US");
+    wait_contains(&mut app.app, "one.txt");
+
+    app.app.press("id:scan-button").unwrap();
+    app.app.wait_for("id:scan-strip").unwrap();
+    assert!(has(&mut app.app, "one.txt"));
+    let _ = app.app.press("id:cancel-scan");
 }
 
 #[test]
@@ -401,8 +442,10 @@ fn the_index_is_shared_with_the_command_line() {
 fn a_missing_folder_is_not_added() {
     let fixture = Fixture::empty();
     let mut app = start(fixture.config(), &[], "en-US");
-    app.app.wait_for("id:type-path").unwrap();
-    app.app.press("id:type-path").unwrap();
+    app.app.wait_for("id:filters").unwrap();
+    app.app.press("id:filters").unwrap();
+    app.app.wait_for("id:add-folder").unwrap();
+    app.app.press("id:add-folder").unwrap();
     app.app.wait_for("id:scan-path").unwrap();
     app.app
         .type_text("id:scan-path", "/nonexistent-onley-folder")

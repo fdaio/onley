@@ -13,17 +13,15 @@ pub enum Category {
     Documents,
     Archives,
     System,
-    Search,
 }
 
-pub const TABS: [Category; 7] = [
+pub const TABS: [Category; 6] = [
     Category::All,
     Category::Images,
     Category::Videos,
     Category::Documents,
     Category::Archives,
     Category::System,
-    Category::Search,
 ];
 
 const IMAGE: &[&str] = &[
@@ -70,7 +68,6 @@ impl Category {
             Category::Documents => "documents",
             Category::Archives => "archives",
             Category::System => "system",
-            Category::Search => "search",
             Category::All => "all",
         }
     }
@@ -83,7 +80,6 @@ impl Category {
             Category::Documents => keys::DOCUMENTS,
             Category::Archives => keys::ARCHIVES,
             Category::System => keys::SYSTEM,
-            Category::Search => keys::SEARCH,
             Category::All => keys::ALL_COPIES,
         }
     }

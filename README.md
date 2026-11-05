@@ -73,18 +73,29 @@ brew install --cask onley
 The NSH desktop client covers the daily cleanup loop: scan one or more folders,
 review duplicate groups, choose one copy to keep per group, and delete the rest
 after one confirmation. Folders that the deletion empties are removed too, up to
-but never including the scan root. Scanning shows a live MB/s gauge with a moving needle.
-The sidebar holds the source folders; drag a folder onto the drop zone, or click
-it to open the system folder picker. A "Type a path" button in the drop zone
-opens a dialog with clipboard paste and recent folders. A folder inside another selected folder is merged into its
-parent before scanning; merging uses absolute paths, so symlink aliases are not
-resolved. The header shows indexed files, duplicate groups and reclaimable
-space. The tabs filter groups by file type, and Search filters by file name or
-path. The bottom bar holds the auto-select policy: Keep newest, Keep oldest, or
-Keep by path. Each group card shows a gradient preview, file tags and the
-path of every copy; the original copy is the first path. Clear drops every keep
-choice, and Review & Delete opens the confirmation. The policy never deletes
-without confirmation. It uses the same `~/.onley/local.db` index as the CLI.
+but never including the scan root.
+
+The desktop client uses the same single-column layout as the phone app: a
+compact top bar with the index summary, search, **Filters**, one primary action
+and settings; the duplicate list or the empty state fills the rest. **Filters**
+opens the source folders and file types. Its **Add folder** button opens the
+add-folder dialog, which can browse, paste a path, or pick a recent folder;
+drag-and-drop onto the window still works. A folder inside another selected
+folder is merged into its parent before scanning; merging uses absolute paths,
+so symlink aliases are not resolved.
+
+The compact top bar shows indexed files, duplicate groups and reclaimable
+space, with a search field, one primary action and a settings button. The
+primary action reads **Scan**, **Cancel** while scanning, or **Review & Delete**
+when there are duplicates. The list stays visible while scanning; a compact
+progress strip shows the speed and elapsed time. Search matches file names and
+paths across the selected type.
+
+Settings holds the auto-select policy (Keep newest, Keep oldest, or Keep by
+path), **Clear** choices, and the language. Each group card shows a gradient
+preview, file tags and the path of every copy; the original copy is the first
+path. The policy never deletes without confirmation. It uses the same
+`~/.onley/local.db` index as the CLI.
 Release builds of the macOS app are signed with a Developer ID and notarized.
 Local `make app` builds are not signed. Windows code signing is in progress;
 Linux builds remain unsigned; see the note below before opening one.
@@ -118,8 +129,8 @@ validated target in this preview.
 
 The client uses the black, paper and pink brutalist palette. It is available in
 English and Simplified Chinese. The first launch follows the system language;
-the settings button at the right end of the tab bar opens the language choices,
-and the selection is remembered.
+the settings button in the top bar opens the language choices, and the
+selection is remembered.
 UI strings live in `crates/onley-core/src/i18n.rs`; add a catalog there to
 support another language.
 

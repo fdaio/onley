@@ -20,7 +20,7 @@ fn main() -> impl std::process::Termination {
         platform::AppOptions {
             title: "Onley".to_owned(),
             app_id: APP_ID.to_owned(),
-            size: (1000, 620),
+            size: (960, 560),
             ..Default::default()
         },
     )
