@@ -29,7 +29,7 @@ Website: https://fdaio.github.io/onley/ · [中文](https://fdaio.github.io/onle
 Download a release archive for your platform, or use the [download page](https://fdaio.github.io/onley/download.html):
 
 `<version>` is the release number without the leading `v`, for example
-`0.2.16`.
+`0.2.17`.
 
 ```sh
 # macOS (Apple silicon)
@@ -92,7 +92,8 @@ progress strip shows the speed and elapsed time. Search matches file names and
 paths across the selected type.
 
 Settings holds the auto-select policy (Keep newest, Keep oldest, or Keep by
-path), **Clear** choices, and the language. Each group card shows a gradient
+path), **Clear** choices, and the language. The policy can change while a scan
+runs; the scan applies it when it ends. Each group card shows a gradient
 preview, file tags and the path of every copy; the original copy is the first
 path. The policy never deletes without confirmation. It uses the same
 `~/.onley/local.db` index as the CLI.
