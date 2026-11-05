@@ -377,8 +377,11 @@ impl State {
     }
 
     /// Stores the policy and selects the keep copy in every group.
+    ///
+    /// A delete rejects the change because it acts on the current choices.
+    /// A scan accepts it, and the policy applies again when the scan ends.
     pub fn apply_keep_policy(&self, policy: KeepPolicy) {
-        if self.scanning.get() || self.busy.get() {
+        if self.busy.get() {
             return;
         }
         if self.keep_policy.get() != policy {

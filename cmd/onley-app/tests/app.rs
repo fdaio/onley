@@ -8,7 +8,7 @@ use nsh_testing::{Headless, MemoryStorage};
 use onley_app::Config;
 use onley_core::db::{Db, FileRecord};
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, SystemTime};
 
 static TEST_LOCK: Mutex<()> = Mutex::new(());
@@ -70,6 +70,19 @@ struct TestApp {
 }
 
 fn start(config: Config, storage: &[(&str, &str)], locale: &str) -> TestApp {
+    start_with_storage(
+        config,
+        MemoryStorage::new(
+            storage
+                .iter()
+                .map(|(key, value)| ((*key).to_string(), (*value).to_string())),
+        ),
+        locale,
+    )
+}
+
+/// Starts the app on `storage`, so a test can read what it writes.
+fn start_with_storage(config: Config, storage: Arc<MemoryStorage>, locale: &str) -> TestApp {
     let guard = TEST_LOCK
         .lock()
         .unwrap_or_else(|poison| poison.into_inner());
@@ -79,10 +92,7 @@ fn start(config: Config, storage: &[(&str, &str)], locale: &str) -> TestApp {
         width: Points(1000.0),
         height: Points(900.0),
     };
-    engine.storage =
-        Some(MemoryStorage::new(storage.iter().map(|(key, value)| {
-            ((*key).to_string(), (*value).to_string())
-        })));
+    engine.storage = Some(storage);
     if let Some(locale) = Locale::parse(locale) {
         engine.environment.locale = locale;
     }
@@ -107,6 +117,23 @@ fn wait_contains(app: &mut Headless, needle: &str) {
     app.wait_until(needle, Duration::from_secs(10), |screen| {
         screen.texts().iter().any(|text| text.contains(needle))
     })
+    .unwrap_or_else(|err| panic!("{err}"));
+}
+
+/// Runs frames until the group card marks `name` as the copy to keep.
+fn wait_keeps(app: &mut Headless, name: &str) {
+    let suffix = format!("/{name}");
+    app.wait_until(
+        &format!("KEEP on {name}"),
+        Duration::from_secs(5),
+        |screen| {
+            let texts = screen.texts();
+            let Some(index) = texts.iter().position(|text| text.ends_with(&suffix)) else {
+                return false;
+            };
+            texts.get(index + 1) == Some(&"KEEP")
+        },
+    )
     .unwrap_or_else(|err| panic!("{err}"));
 }
 
@@ -256,6 +283,39 @@ fn keep_policy_selects_one_copy_per_group() {
 
     app.app.press("id:clear-choices").unwrap();
     wait_contains(&mut app.app, "(0 FILES)");
+}
+
+#[test]
+fn a_policy_chosen_while_scanning_applies_when_the_scan_ends() {
+    let fixture = Fixture::with(&[
+        ("old.txt", b"same-bytes", 100),
+        ("new.txt", b"same-bytes", 300),
+    ]);
+    let big = std::fs::File::create(fixture.dir.path().join("big.bin")).unwrap();
+    big.set_len(1 << 31).unwrap();
+    let storage = MemoryStorage::new(std::iter::empty());
+    let mut app = start_with_storage(fixture.config(), storage.clone(), "en-US");
+    app.app.wait_for("id:scan-button").unwrap();
+    app.app.press("id:scan-button").unwrap();
+    app.app.wait_for("id:scan-strip").unwrap();
+
+    app.app.press("id:settings").unwrap();
+    app.app.wait_for("id:policy-newest").unwrap();
+    assert!(app.app.screen().enabled("id:policy-newest").unwrap());
+    app.app.press("id:policy-newest").unwrap();
+    assert!(app.app.screen().matches("id:scan-strip").unwrap());
+    wait_keeps(&mut app.app, "new.txt");
+    assert_eq!(
+        storage.entries().get("keep_policy").map(String::as_str),
+        Some("newest")
+    );
+
+    app.app.press("id:settings-close").unwrap();
+    let _ = app.app.press("id:cancel-scan");
+    app.app
+        .wait_for_gone("id:scan-strip", Duration::from_secs(5))
+        .unwrap();
+    wait_keeps(&mut app.app, "new.txt");
 }
 
 #[test]
