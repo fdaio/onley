@@ -12,89 +12,134 @@ permissions:
 
 jobs:
   test:
-    name: Test
+    name: Test (Linux)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v6
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          go-version: '1.27.3'
-          check-latest: true
+          components: rustfmt, clippy
 
-      - name: Install golangci-lint
-        uses: golangci/golangci-lint-action@v9
-        with:
-          version: latest
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Format
+        run: cargo fmt --check
 
       - name: Lint
-        run: make lint
+        run: cargo clippy -p onley-core -p onley --all-targets -- -D warnings
 
       - name: Test
-        run: make test
+        run: cargo test -p onley-core -p onley
+
+  test-macos:
+    name: Test (macOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Test
+        run: cargo test --workspace
 
   release-build:
-    name: Build (${{ matrix.os }}/${{ matrix.arch }})
+    name: Build CLI (${{ matrix.os }}/${{ matrix.arch }})
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [ test ]
-    runs-on: ubuntu-latest
+    needs: [ test, test-macos ]
+    runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
         include:
           - os: linux
             arch: amd64
+            runner: ubuntu-latest
           - os: linux
             arch: arm64
-          - os: darwin
-            arch: amd64
+            runner: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            linker: aarch64-linux-gnu-gcc
           - os: darwin
             arch: arm64
+            runner: macos-latest
+          - os: darwin
+            arch: amd64
+            runner: macos-latest
+            target: x86_64-apple-darwin
           - os: windows
             arch: amd64
-      fail-fast: false
+            runner: windows-latest
+    fail-fast: false
 
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v6
-        with:
-          go-version: '1.27.3'
-          check-latest: true
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Add the Rust target
+        if: matrix.target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Install the cross linker
+        if: matrix.linker
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - uses: Swatinem/rust-cache@v2
 
       - name: Build binary
+        shell: bash
         env:
-          GOOS: ${{ matrix.os }}
-          GOARCH: ${{ matrix.arch }}
+          CARGO_TARGET: ${{ matrix.target }}
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.linker }}
+          OS_NAME: ${{ matrix.os }}
+          ARCH: ${{ matrix.arch }}
         run: |
-          BINARY="onley_${{ matrix.os }}_${{ matrix.arch }}"
-          if [ "${{ matrix.os }}" = "windows" ]; then
-            BINARY="${BINARY}.exe"
+          TARGET_DIR="target/release"
+          if [ -n "$CARGO_TARGET" ]; then
+            TARGET_DIR="target/$CARGO_TARGET/release"
           fi
-          go build -trimpath -ldflags="-s -w" -o "$BINARY" ./cmd/onley
-          echo "binary=$BINARY" >> $GITHUB_ENV
+          cargo build --release -p onley ${CARGO_TARGET:+--target "$CARGO_TARGET"}
+          BINARY="onley_${OS_NAME}_${ARCH}"
+          if [ "$OS_NAME" = "windows" ]; then
+            cp "$TARGET_DIR/onley.exe" "${BINARY}.exe"
+          else
+            cp "$TARGET_DIR/onley" "$BINARY"
+          fi
+          echo "binary=$BINARY" >> "$GITHUB_ENV"
 
       - name: Package archive
+        shell: bash
+        env:
+          OS_NAME: ${{ matrix.os }}
+          ARCH: ${{ matrix.arch }}
         run: |
-          BINARY="${{ env.binary }}"
           TAG="${{ github.ref_name }}"
-          if [ "${{ matrix.os }}" = "windows" ]; then
-            ARCHIVE="onley_${TAG}_${{ matrix.os }}_${{ matrix.arch }}.zip"
-            7z a "$ARCHIVE" "$BINARY"
+          if [ "$OS_NAME" = "windows" ]; then
+            ARCHIVE="onley_${TAG}_${OS_NAME}_${ARCH}.zip"
+            7z a "$ARCHIVE" "${BINARY}.exe"
           else
-            ARCHIVE="onley_${TAG}_${{ matrix.os }}_${{ matrix.arch }}.tar.gz"
+            ARCHIVE="onley_${TAG}_${OS_NAME}_${ARCH}.tar.gz"
             tar czf "$ARCHIVE" "$BINARY"
           fi
-          echo "archive=$ARCHIVE" >> $GITHUB_ENV
-          sha256sum "$ARCHIVE" >> /tmp/checksums-all.txt
+          echo "archive=$ARCHIVE" >> "$GITHUB_ENV"
+          if command -v sha256sum >/dev/null; then
+            sha256sum "$ARCHIVE" >> /tmp/checksums-all.txt
+          else
+            shasum -a 256 "$ARCHIVE" >> /tmp/checksums-all.txt
+          fi
 
-      - name: Upload archive
-        uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ env.archive }}
           path: ${{ env.archive }}
 
-      - name: Upload checksums (intermediate)
-        uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@v7
         with:
           name: checksums-${{ matrix.os }}-${{ matrix.arch }}
           path: /tmp/checksums-all.txt
@@ -102,24 +147,22 @@ jobs:
   desktop-build:
     name: Build desktop packages
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [ test ]
+    needs: [ test, test-macos ]
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v6
-        with:
-          go-version: '1.27.3'
-          check-latest: true
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install NSH
+        run: curl -fsSL https://nsh.dev/install.sh | sh
 
       - name: Build desktop packages
         run: |
-          go tool nsgo build -target macos_arm64,macos_x64,windows_x64,linux_x64 ./cmd/onley-app
-          VERSION="${GITHUB_REF_NAME#v}"
+          export PATH="$HOME/.local/bin:$PATH"
+          nsh package --target macos -o dist cmd/onley-app
           {
-            echo "version=$VERSION"
-            echo "tag=${GITHUB_REF_NAME}"
-            echo "dist=cmd/onley-app/dist"
+            echo "app=dist/Onley.app"
           } >> "$GITHUB_ENV"
 
       - name: Validate Apple signing secrets
@@ -158,7 +201,7 @@ jobs:
           rm -f "$RUNNER_TEMP/certificate.p12"
           security find-identity -v -p codesigning "$KEYCHAIN_PATH"
 
-      - name: Sign and notarize macOS apps
+      - name: Sign and notarize the macOS app
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
@@ -171,107 +214,43 @@ jobs:
             echo "::error::Developer ID Application identity not found"
             exit 1
           fi
-          for arch in arm64 x64; do
-            APP="$dist/Onley-$version-macos_$arch/Onley.app"
-            if [ ! -d "$APP" ]; then
-              echo "::error::Missing $APP"
-              exit 1
-            fi
-            codesign --force --options runtime --timestamp --sign "$IDENTITY" "$APP"
-            codesign --verify --deep --strict --verbose=2 "$APP"
+          codesign --force --options runtime --timestamp --sign "$IDENTITY" "$app"
+          codesign --verify --deep --strict --verbose=2 "$app"
 
-            NOTARY_ZIP="$RUNNER_TEMP/Onley-$version-macos_$arch-notarize.zip"
-            ditto -c -k --keepParent "$APP" "$NOTARY_ZIP"
-            RESULT=$(xcrun notarytool submit "$NOTARY_ZIP" \
-              --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" \
-              --password "$APPLE_APP_SPECIFIC_PASSWORD" \
-              --wait --output-format json)
-            STATUS=$(printf '%s' "$RESULT" | python3 -c 'import json, sys; print(json.load(sys.stdin)["status"])')
-            echo "notary status: $STATUS"
-            test "$STATUS" = "Accepted"
-            xcrun stapler staple "$APP"
-            xcrun stapler validate "$APP"
-            spctl -a -vvv -t exec "$APP"
-            rm -f "$NOTARY_ZIP"
-          done
+          NOTARY_ZIP="$RUNNER_TEMP/Onley-notarize.zip"
+          ditto -c -k --keepParent "$app" "$NOTARY_ZIP"
+          RESULT=$(xcrun notarytool submit "$NOTARY_ZIP" \
+            --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+            --wait --output-format json)
+          STATUS=$(printf '%s' "$RESULT" | python3 -c 'import json, sys; print(json.load(sys.stdin)["status"])')
+          echo "notary status: $STATUS"
+          test "$STATUS" = "Accepted"
+          xcrun stapler staple "$app"
+          xcrun stapler validate "$app"
+          spctl -a -vvv -t exec "$app"
+          rm -f "$NOTARY_ZIP"
 
       - name: Package desktop packages
         run: |
-          ROOT="$PWD"
+          TAG="${{ github.ref_name }}"
           ditto -c -k --sequesterRsrc --keepParent \
-            "$dist/Onley-$version-macos_arm64/Onley.app" \
-            "onley-desktop_${tag}_macos_arm64.zip"
-          ditto -c -k --sequesterRsrc --keepParent \
-            "$dist/Onley-$version-macos_x64/Onley.app" \
-            "onley-desktop_${tag}_macos_x64.zip"
-          (cd "$dist/Onley-$version-windows_x64" && zip -qry "$ROOT/onley-desktop_${tag}_windows_x64.zip" .)
-          tar -C "$dist/Onley-$version-linux_x64" -czf "onley-desktop_${tag}_linux_x64.tar.gz" .
+            "$app" "onley-desktop_${TAG}_macos_arm64.zip"
+          shasum -a 256 onley-desktop_${TAG}_macos_arm64.zip > checksums-all.txt
 
-          shasum -a 256 onley-desktop_${tag}_*.zip onley-desktop_${tag}_*.tar.gz > checksums-all.txt
-
-      - name: Verify macOS release archives
+      - name: Verify the macOS release archive
         run: |
           set -euo pipefail
-          for arch in arm64 x64; do
-            DIR="$RUNNER_TEMP/verify-$arch"
-            rm -rf "$DIR"
-            mkdir -p "$DIR"
-            ditto -x -k "onley-desktop_${tag}_macos_${arch}.zip" "$DIR"
-            spctl -a -vvv -t exec "$DIR/Onley.app"
-          done
+          TAG="${{ github.ref_name }}"
+          DIR="$RUNNER_TEMP/verify"
+          rm -rf "$DIR"
+          mkdir -p "$DIR"
+          ditto -x -k "onley-desktop_${TAG}_macos_arm64.zip" "$DIR"
+          spctl -a -vvv -t exec "$DIR/Onley.app"
 
-      - name: Remove signing keychain
-        if: always()
-        run: security delete-keychain "$RUNNER_TEMP/app-signing.keychain-db" 2>/dev/null || true
-
-      - name: Upload desktop archives
-        uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@v7
         with:
-          name: desktop-archives
+          name: desktop-packages
           path: |
             onley-desktop_*.zip
-            onley-desktop_*.tar.gz
-
-      - name: Upload checksums (intermediate)
-        uses: actions/upload-artifact@v7
-        with:
-          name: checksums-desktop
-          path: checksums-all.txt
-
-  release-publish:
-    name: Publish Release
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [ release-build, desktop-build ]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v8
-        with:
-          path: /tmp/artifacts
-          merge-multiple: false
-
-      - name: Collect archives and checksums
-        run: |
-          # Gather checksums from all matrix jobs
-          find /tmp/artifacts -name 'checksums-all.txt' -exec cat {} \; | sort -u > checksums.txt
-
-          # Gather archives (skip checksum dirs)
-          mkdir -p archives
-          for d in /tmp/artifacts/*/; do
-            base=$(basename "$d")
-            case "$base" in checksums-*) continue;; esac
-            cp "$d"/* ./archives/ 2>/dev/null || true
-          done
-          ls -la archives/
-
-      - name: Publish release
-        uses: softprops/action-gh-release@v3
-        with:
-          files: |
-            archives/*
-            checksums.txt
-          generate_release_notes: true
-          draft: false
-          prerelease: false
+            checksums-all.txt

@@ -18,10 +18,10 @@
 - 基于 MD5 的全目录树重复文件检测
 - 索引以 SQLite 文件形式存储在本地
 - 断点续扫：重新扫描时，大小和修改时间未变的文件会被跳过
-- 可配置的 goroutine worker 池并发扫描
+- 可配置的 worker 线程池并发扫描
 - 持续建索引（`watch`）：文件新建、修改、删除时索引自动跟进
 - 交互式清理（`clean`）或自动清理（`clean-all`）
-- NSGo 桌面客户端，支持多文件夹扫描与清理（预览）
+- NSH 桌面客户端，支持多文件夹扫描与清理（预览）
 - 多机模式：replica 将本地索引与 master 对比，删除本地冗余副本，或将独有文件通过 HTTP 迁移到 master
 
 ## 安装
@@ -71,7 +71,7 @@ brew tap laotree/tap
 brew install --cask onley
 ```
 
-NSGo 桌面客户端覆盖日常清理闭环：扫描一个或多个文件夹、查看重复组、每组选择一个
+NSH 桌面客户端覆盖日常清理闭环：扫描一个或多个文件夹、查看重复组、每组选择一个
 保留副本、确认后删除其余副本。删除后变空的子文件夹会一并移除，但不会删到扫描根。
 扫描时显示实时 MB/s 速度仪表与动态指针。左侧栏保留
 源文件夹；可把文件夹拖到拖放区，或点击拖放区打开系统文件夹选择器。拖放区下方的
@@ -88,10 +88,7 @@ macOS 构建并打开：
 
 ```sh
 make app
-# Apple silicon
-open cmd/onley-app/dist/Onley-0.2.16-macos_arm64/Onley.app
-# Intel
-open cmd/onley-app/dist/Onley-0.2.16-macos_x64/Onley.app
+open dist/Onley.app
 ```
 
 安装本地构建会替换 `/Applications/Onley.app`：
@@ -107,14 +104,14 @@ make install
 make install INSTALL_DIR="$HOME/Applications"
 ```
 
-构建应用需要 Go 1.27.3 和 Xcode；NSGo 版本固定在 `go.mod`。
-NSGo 仍处于 early 阶段、没有稳定 API，升级应作为独立任务。
-`make app` 构建当前 Mac 架构；`make app-all` 打包 macOS、Windows 和 Linux。
-本轮以 macOS 为运行验证目标；Windows 与 Linux 已验证可构建、可打包，但尚未运行验证。
+构建应用需要 Rust 1.88 或更高版本、`nsh` 命令和 Xcode；NSH 版本固定在
+`Cargo.toml`。NSH 仍处于 early 阶段、没有稳定 API，升级应作为独立任务。
+`make app` 打包 macOS 应用；Windows 与 Linux 桌面需在各自系统上构建。
+本轮以 macOS 为运行验证目标。
 
 客户端使用黑白+粉色+浅绿的 brutalist 配色，只做桌面端。界面支持 English 与
 简体中文，首次启动跟随系统语言；左侧栏底部的 EN/中文按钮可切换，选择会被记住。
-文案位于 `internal/i18n`，新增语言目录即可扩展。
+文案位于 `crates/onley-core/src/i18n.rs`，新增语言目录即可扩展。
 
 手机与 Web 客户端需要 onley 提供本地服务 API，本预览不做。
 客户端不支持 `watch`、replica、`config` 和自定义 `-db`，这些继续用 CLI。
@@ -260,7 +257,7 @@ onley watch -master http://master-host:8080 ~/Downloads
   挂了一个星期的 master 不会被每 30 秒戳一次。
 - 连不上 master 不会影响建索引。
 
-上传跑在独立的 goroutine 上。这不是可选项：watcher 的事件通道有界，满了会丢弃
+上传跑在独立的线程上。这不是可选项：watcher 的事件通道有界，满了会丢弃
 事件，所以上传如果跑在索引循环里，代价不是「变慢」而是**静默漏掉索引条目**。
 
 ## 清理
@@ -403,9 +400,8 @@ master 对外暴露一组小型 JSON API，供 `replica check` 内部调用，�
 
 ```sh
 make test       # 运行所有测试
-make coverage   # 生成覆盖率报告 → coverage.html
-make lint       # golangci-lint
-make clean      # 删除二进制文件和覆盖率文件
+make lint       # cargo fmt --check 与 cargo clippy
+make clean      # 删除构建产物
 ```
 
-运行环境要求：Go 1.27.3 或更高（module 声明的版本）
+运行环境要求：Rust 1.88 或更高（`Cargo.toml` 声明的版本）

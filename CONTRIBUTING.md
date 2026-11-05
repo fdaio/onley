@@ -22,22 +22,21 @@ write code.
 
 ## Development setup
 
-onley requires Go 1.27.3 or newer. The desktop client uses NSGo. Native macOS UI
+onley requires Rust 1.88 or newer. The desktop client uses NSH. Native macOS UI
 tests also need Xcode.
 
 ```sh
 git clone https://github.com/fdaio/onley
 cd onley
 make build      # build the CLI as ./onley
-make test       # run all Go tests
-make lint       # run golangci-lint
+make test       # run all tests
+make lint       # run cargo fmt --check and cargo clippy
 ```
 
 The desktop client builds on macOS:
 
 ```sh
-make app        # build for this Mac
-make app-all    # package macOS, Windows, and Linux targets
+make app        # package the macOS app
 ```
 
 Run the native macOS UI tests from the app directory:
