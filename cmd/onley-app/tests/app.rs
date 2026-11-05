@@ -147,6 +147,13 @@ fn wait_gone(app: &mut Headless, needle: &str) {
     .unwrap_or_else(|err| panic!("{err}"));
 }
 
+/// Runs frames until the scan ends and the header settles.
+fn wait_for_scan(app: &mut Headless) {
+    app.wait_for_gone("id:scan-strip", Duration::from_secs(30))
+        .unwrap_or_else(|err| panic!("{err}"));
+    app.wait_for("id:delete-files").unwrap();
+}
+
 /// Opens settings, applies a keep policy, and closes settings.
 fn set_policy(app: &mut Headless, id: &str) {
     let _ = app.wait_for_gone("id:scan-strip", Duration::from_secs(10));
@@ -243,6 +250,7 @@ fn category_tabs_filter_groups() {
     let mut app = start(fixture.config(), &[], "en-US");
     app.app.wait_for("id:scan-button").unwrap();
     app.app.press("id:scan-button").unwrap();
+    wait_for_scan(&mut app.app);
     wait_contains(&mut app.app, "a.jpg");
     assert!(has(&mut app.app, "a.pdf"));
 
@@ -284,6 +292,7 @@ fn keep_policy_selects_one_copy_per_group() {
     let mut app = start(fixture.config(), &[], "en-US");
     app.app.wait_for("id:scan-button").unwrap();
     app.app.press("id:scan-button").unwrap();
+    wait_for_scan(&mut app.app);
     wait_contains(&mut app.app, "old.txt");
 
     app.app.press("id:settings").unwrap();
@@ -339,6 +348,7 @@ fn remove_folder_hides_its_groups() {
     let mut app = start(fixture.config(), &[], "en-US");
     app.app.wait_for("id:scan-button").unwrap();
     app.app.press("id:scan-button").unwrap();
+    wait_for_scan(&mut app.app);
     wait_contains(&mut app.app, "one.txt");
 
     let root = fixture.dir.path().to_string_lossy().into_owned();
