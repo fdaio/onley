@@ -47,7 +47,7 @@ brew install --cask onley
 ```
 
 发布范围为 darwin 与 linux 的 amd64 / arm64，以及 windows 的 amd64。
-桌面客户端预览发布 macOS arm64；Windows 与 Linux 桌面需在各自系统上构建。见
+所有 release 资产共用一个 `checksums.txt`。桌面客户端预览发布 macOS arm64；Windows 与 Linux 桌面需在各自系统上构建。见
 [releases](https://github.com/fdaio/onley/releases)。
 
 从源码构建：
