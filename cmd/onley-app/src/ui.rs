@@ -1,7 +1,6 @@
 //! The desktop client's view.
 
 use crate::categories::{self, Category, TABS};
-use crate::gauge;
 use crate::state::{PathStatus, State, display_path};
 use crate::theme;
 use nsh_base::input;
@@ -45,6 +44,7 @@ pub fn root(s: &State) -> impl IntoElement + use<> {
         let _ = s.adding_folder.get();
         let _ = s.recent.get();
         let _ = s.settings.get();
+        let _ = s.filters.get();
         let _ = s.scan_dirs.get();
         main_view(&s)
     })
@@ -73,10 +73,8 @@ fn main_view(s: &State) -> impl IntoElement + use<> {
                 .w_full()
                 .h_full()
                 .child(header(s, compact))
-                .child(tab_bar(s))
-                .child(search_bar(s))
                 .child(body(s, compact))
-                .child(bottom_bar(s))
+                .child(filters_dialog(s))
                 .child(add_folder_dialog(s))
                 .child(settings_dialog(s)),
         )
@@ -118,287 +116,356 @@ fn text_line_dyn(
 }
 
 fn header(s: &State, compact: bool) -> impl IntoElement + use<> {
+    let state = s.clone();
     view()
         .w_full()
-        .h(px(if compact { 128.0 } else { 190.0 }))
+        .h(px(if compact { 56.0 } else { 64.0 }))
         .flex_row()
-        .gap(px(24.0))
-        .px(px(26.0))
-        .py(px(16.0))
+        .items_center()
+        .gap(px(14.0))
+        .px(px(16.0))
         .bg(theme::SURFACE)
         .border_b_1()
         .border_color(theme::BORDER)
         .child(
-            view()
-                .flex_1()
-                .justify_center()
-                .gap(px(6.0))
-                .child(
-                    text("ONLEY")
-                        .font_family(theme::DISPLAY_FONT)
-                        .text_size(px(if compact { 48.0 } else { 76.0 }))
-                        .text_color(theme::TEXT),
-                )
-                .child(when(
-                    move || !compact,
-                    || {
-                        text("NAVIGATING A WORLD OF\nSHIFTING DATA\nTRADITIONS.")
-                            .font_family(theme::DISPLAY_FONT)
-                            .text_size(px(17.0))
-                            .text_color(theme::TEXT)
-                    },
-                )),
+            text("ONLEY")
+                .font_family(theme::DISPLAY_FONT)
+                .text_size(px(if compact { 24.0 } else { 30.0 }))
+                .text_color(theme::TEXT),
         )
         .child(
             view()
-                .w(px(if compact { 190.0 } else { 300.0 }))
-                .flex_shrink_0()
-                .gap(px(4.0))
-                .pl(px(20.0))
-                .border_l_1()
-                .border_color(theme::BORDER)
-                .child(stat(
+                .flex_1()
+                .flex_row()
+                .items_center()
+                .gap(px(16.0))
+                .child(stat_inline(
                     s.t(i18n::INDEXED_FILES),
                     categories::format_count(s.indexed.get()),
                     theme::TEXT,
                     "indexed-files",
                 ))
-                .child(stat(
+                .child(stat_inline(
                     s.t(i18n::DUPLICATE_GROUPS),
                     categories::format_count(s.summary.get().groups),
                     theme::TEXT,
                     "group-summary",
                 ))
-                .child(stat(
+                .child(stat_inline(
                     s.t(i18n::RECLAIMABLE_SPACE),
                     format::bytes(s.summary.get().wasted),
                     theme::ACCENT,
                     "duplicate-summary",
                 )),
         )
+        .child(search_input(s, compact))
+        .child(
+            press("filters", false, move || state.filters.set(true))
+                .px(px(10.0))
+                .py(px(8.0))
+                .border_1()
+                .border_color(theme::BORDER)
+                .child(text_line("FILTERS", 8.0, FontWeight::BOLD, theme::TEXT)),
+        )
+        .child(rescan_button(s))
+        .child(primary_action(s))
+        .child(
+            press("settings", false, move || state.settings.set(true))
+                .w(px(36.0))
+                .h(px(36.0))
+                .items_center()
+                .justify_center()
+                .bg(theme::SURFACE)
+                .border_1()
+                .border_color(theme::BORDER)
+                .child(text_line("⚙", 15.0, FontWeight::NORMAL, theme::TEXT)),
+        )
 }
 
-fn stat(
+fn stat_inline(
     label: String,
     value: String,
     color: AdaptiveColor,
     test_id: &'static str,
 ) -> impl IntoElement + use<> {
     view()
-        .flex_1()
-        .justify_end()
-        .gap(px(1.0))
-        .pt(px(4.0))
-        .border_t_1()
-        .border_color(theme::BORDER)
+        .gap(px(0.0))
         .child(text_line(
             label.to_uppercase(),
-            8.0,
+            7.0,
             FontWeight::NORMAL,
             theme::MUTED,
         ))
         .child(
             text(value)
                 .font_family(theme::DISPLAY_FONT)
-                .text_size(px(28.0))
+                .text_size(px(16.0))
                 .text_color(color)
                 .test_id(test_id),
         )
 }
 
-fn tab_bar(s: &State) -> impl IntoElement + use<> {
+fn search_input(s: &State, compact: bool) -> impl IntoElement + use<> {
     let state = s.clone();
-    view()
-        .w_full()
-        .flex_row()
-        .border_t_1()
-        .border_b_1()
+    input()
+        .test_id("search-input")
+        .w(px(if compact { 150.0 } else { 210.0 }))
+        .h(px(32.0))
+        .px(px(9.0))
+        .py(px(5.0))
+        .bg(theme::BACKGROUND)
+        .border_1()
         .border_color(theme::BORDER)
-        .child(
-            view()
-                .flex_1()
-                .flex_row()
-                .bg(theme::SURFACE)
-                .test_id("category-tabs")
-                .children(TABS.iter().map(|category| tab(s, *category))),
-        )
-        .child(
-            press("settings", false, move || state.settings.set(true))
-                .w(px(44.0))
-                .h_full()
-                .items_center()
-                .justify_center()
-                .bg(theme::SURFACE)
-                .border_l_1()
-                .border_color(theme::BORDER)
-                .child(text_line("⚙", 16.0, FontWeight::NORMAL, theme::TEXT)),
-        )
+        .font_family(theme::MONO_FONT)
+        .text_size(px(10.0))
+        .text_color(theme::TEXT)
+        .placeholder_color(theme::MUTED.light)
+        .placeholder(s.t(i18n::SEARCH_PLACEHOLDER))
+        .value({
+            let state = state.clone();
+            move || state.query.get()
+        })
+        .on_change({
+            let state = state.clone();
+            move |value: &str| state.set_query(value)
+        })
 }
 
-fn tab(s: &State, category: Category) -> impl IntoElement + use<> {
-    let counts = s.category_counts();
-    let label = s.t(category.label_key());
-    let label = if category == Category::Search {
-        label
+fn primary_action(s: &State) -> impl IntoElement + use<> {
+    let state = s.clone();
+    let scanning = s.scanning.get();
+    let busy = s.busy.get();
+    let targets = s.plan().targets.len();
+    let has_groups = !s.visible.get().is_empty();
+    let has_dirs = !s.scan_dirs.get().is_empty();
+    let (label, id, primary, disabled) = if scanning {
+        (
+            s.t(i18n::CANCEL_SCAN).to_uppercase(),
+            "cancel-scan",
+            false,
+            false,
+        )
+    } else if has_groups {
+        (s.review_label(), "delete-files", true, targets == 0 || busy)
+    } else if !has_dirs {
+        (
+            s.t(i18n::ADD_FOLDER).to_uppercase(),
+            "primary-add-folder",
+            true,
+            busy,
+        )
     } else {
-        format!(
-            "{} ({:02})",
-            label,
-            counts.get(&category).copied().unwrap_or(0)
+        (
+            format!("{} ↗", s.t(i18n::RUN_GLOBAL_SCAN).to_uppercase()),
+            "scan-button",
+            true,
+            busy,
         )
     };
+    let action = state.clone();
+    press(id, disabled, move || {
+        if scanning {
+            action.cancel_scan();
+        } else if targets > 0 {
+            action.open_confirm();
+        } else if !has_dirs {
+            action.open_add_folder();
+        } else {
+            action.start_scan();
+        }
+    })
+    .px(px(14.0))
+    .py(px(8.0))
+    .items_center()
+    .justify_center()
+    .bg(if primary {
+        theme::ACCENT
+    } else {
+        theme::SURFACE
+    })
+    .border_1()
+    .border_color(theme::TEXT)
+    .child(text_line(label, 9.0, FontWeight::BOLD, theme::TEXT))
+}
+
+fn rescan_button(s: &State) -> impl IntoElement + use<> {
+    let state = s.clone();
+    let show = !s.visible.get().is_empty() && !s.scanning.get() && !s.scan_dirs.get().is_empty();
+    when(
+        move || show,
+        move || {
+            let state = state.clone();
+            press("scan-button", state.busy.get(), move || state.start_scan())
+                .px(px(10.0))
+                .py(px(8.0))
+                .border_1()
+                .border_color(theme::BORDER)
+                .child(text_line("SCAN", 8.0, FontWeight::BOLD, theme::TEXT))
+        },
+    )
+}
+
+fn type_row(s: &State, category: Category) -> impl IntoElement + use<> {
+    let counts = s.category_counts();
+    let label = s.t(category.label_key());
+    let label = format!(
+        "{} ({:02})",
+        label,
+        counts.get(&category).copied().unwrap_or(0)
+    );
     let state = s.clone();
     let selected = s.category.get() == category;
     press(format!("tab:{}", category.key_name()), false, move || {
         state.set_category(category)
     })
-    .flex_1()
-    .py(px(11.0))
+    .flex_row()
     .items_center()
-    .justify_center()
+    .px(px(10.0))
+    .py(px(6.0))
     .bg(if selected {
-        theme::TEXT
+        theme::SUCCESS_SOFT
     } else {
         theme::SURFACE
     })
-    .border_r_1()
+    .border_b_1()
     .border_color(theme::BORDER)
     .child(text_line(
         label.to_uppercase(),
         8.0,
         FontWeight::BOLD,
-        if selected {
-            theme::SURFACE
-        } else {
-            theme::TEXT
-        },
+        if selected { theme::TEXT } else { theme::MUTED },
     ))
 }
 
-fn search_bar(s: &State) -> impl IntoElement + use<> {
-    let state = s.clone();
-    let category = s.category;
-    when(
-        move || category.get() == Category::Search,
-        move || {
-            let state = state.clone();
+fn body(s: &State, compact: bool) -> impl IntoElement + use<> {
+    let size = window();
+    let header = if compact { 56.0 } else { 64.0 };
+    let height = (size.height.0 - header).max(0.0);
+    view()
+        .w_full()
+        .h(px(height))
+        .bg(theme::BACKGROUND)
+        .items_center()
+        .child(
             view()
                 .w_full()
-                .px(px(20.0))
-                .py(px(8.0))
-                .bg(theme::SURFACE)
-                .border_b_1()
-                .border_color(theme::BORDER)
+                .max_w(px(960.0))
+                .h_full()
+                .child(main_panel(s)),
+        )
+}
+
+fn filters_dialog(s: &State) -> impl IntoElement + use<> {
+    let state = s.clone();
+    let close = s.clone();
+    when(
+        move || state.filters.get(),
+        move || {
+            let state = state.clone();
+            let close = close.clone();
+            let backdrop = close.clone();
+            let all = state.clone();
+            let rows = state.clone();
+            let add = state.clone();
+            let close_button = state.clone();
+            view()
+                .absolute()
+                .inset(px(0.0))
+                .w_full()
+                .h_full()
+                .items_center()
+                .justify_center()
                 .child(
-                    input()
-                        .test_id("search-input")
-                        .value({
-                            let state = state.clone();
-                            move || state.query.get()
-                        })
-                        .on_change({
-                            let state = state.clone();
-                            move |value: &str| state.set_query(value)
-                        })
-                        .placeholder(state.t(i18n::SEARCH_PLACEHOLDER))
-                        .h(px(34.0))
-                        .px(px(10.0))
-                        .py(px(6.0))
-                        .bg(theme::BACKGROUND)
-                        .border_1()
+                    view()
+                        .absolute()
+                        .inset(px(0.0))
+                        .w_full()
+                        .h_full()
+                        .bg(theme::OVERLAY)
+                        .on_press(move || backdrop.filters.set(false)),
+                )
+                .child(
+                    view()
+                        .test_id("filters-dialog")
+                        .w(px(420.0))
+                        .bg(theme::SURFACE)
+                        .border_2()
                         .border_color(theme::BORDER)
-                        .font_family(theme::MONO_FONT)
-                        .text_size(px(11.0))
-                        .text_color(theme::TEXT)
-                        .placeholder_color(theme::MUTED.light),
+                        .p(px(20.0))
+                        .gap(px(10.0))
+                        .child(
+                            text("FILTERS")
+                                .font_family(theme::DISPLAY_FONT)
+                                .text_size(px(26.0))
+                                .text_color(theme::TEXT),
+                        )
+                        .child(text_line(
+                            format!(
+                                "{} ({:02})",
+                                state.t(i18n::SOURCE_FOLDERS).to_uppercase(),
+                                state.scan_dirs.get().len()
+                            ),
+                            8.0,
+                            FontWeight::BOLD,
+                            theme::MUTED,
+                        ))
+                        .child(
+                            press("all-folders", false, move || all.set_active_root(""))
+                                .flex_row()
+                                .items_center()
+                                .px(px(8.0))
+                                .py(px(6.0))
+                                .border_b_1()
+                                .border_color(theme::BORDER)
+                                .child(text_line(
+                                    state.t(i18n::ALL_FOLDERS).to_uppercase(),
+                                    8.0,
+                                    FontWeight::BOLD,
+                                    theme::TEXT,
+                                )),
+                        )
+                        .child(
+                            view().w_full().children(
+                                state
+                                    .scan_dirs
+                                    .get()
+                                    .iter()
+                                    .enumerate()
+                                    .map(|(index, _)| folder_row(&rows, index))
+                                    .collect::<Vec<_>>(),
+                            ),
+                        )
+                        .child(app_button(
+                            state.t(i18n::ADD_FOLDER),
+                            "add-folder",
+                            ButtonKind::Secondary,
+                            false,
+                            move || {
+                                add.filters.set(false);
+                                add.open_add_folder();
+                            },
+                        ))
+                        .child(text_line(
+                            state.t(i18n::FILE_TYPES).to_uppercase(),
+                            8.0,
+                            FontWeight::BOLD,
+                            theme::MUTED,
+                        ))
+                        .child(
+                            view()
+                                .w_full()
+                                .children(TABS.iter().map(|category| type_row(&rows, *category))),
+                        )
+                        .child(app_button(
+                            state.t(i18n::CLOSE),
+                            "filters-close",
+                            ButtonKind::Secondary,
+                            false,
+                            move || close_button.filters.set(false),
+                        )),
                 )
         },
     )
-}
-
-fn body(s: &State, compact: bool) -> impl IntoElement + use<> {
-    view()
-        .flex_1()
-        .w_full()
-        .flex_row()
-        .child(sidebar(s, compact))
-        .child(main_panel(s))
-}
-
-fn sidebar(s: &State, compact: bool) -> impl IntoElement + use<> {
-    let roots = s.scan_dirs;
-    let state = s.clone();
-    view()
-        .w(px(if compact { 200.0 } else { 260.0 }))
-        .flex_shrink_0()
-        .bg(theme::SURFACE)
-        .border_r_1()
-        .border_color(theme::BORDER)
-        .child(
-            view()
-                .flex_row()
-                .items_center()
-                .gap(px(8.0))
-                .px(px(12.0))
-                .py(px(9.0))
-                .bg(theme::TEXT)
-                .child(text_line(
-                    s.t(i18n::SOURCE_FOLDERS).to_uppercase(),
-                    9.0,
-                    FontWeight::BOLD,
-                    theme::SURFACE,
-                ))
-                .child(view().flex_1())
-                .child(
-                    press("all-folders", false, move || state.set_active_root(""))
-                        .px(px(4.0))
-                        .py(px(2.0))
-                        .child(text_line(
-                            s.t(i18n::ALL_FOLDERS).to_uppercase(),
-                            7.0,
-                            FontWeight::NORMAL,
-                            theme::SURFACE,
-                        )),
-                )
-                .child(text_line(
-                    format!("({:02})", s.scan_dirs.get().len()),
-                    9.0,
-                    FontWeight::NORMAL,
-                    theme::SURFACE,
-                )),
-        )
-        .child(
-            view().flex_1().test_id("source-folders").children(
-                roots
-                    .get()
-                    .iter()
-                    .enumerate()
-                    .map(|(index, _)| folder_row(s, index))
-                    .collect::<Vec<_>>(),
-            ),
-        )
-        .child(when(move || !compact, {
-            let state = s.clone();
-            move || drop_zone(&state)
-        }))
-        .child(scan_button(s))
-        .child(
-            view()
-                .flex_row()
-                .items_center()
-                .gap(px(8.0))
-                .px(px(12.0))
-                .py(px(7.0))
-                .border_t_1()
-                .border_color(theme::BORDER)
-                .child(text_line(
-                    s.t(i18n::LOCAL_ONLY).to_uppercase(),
-                    7.0,
-                    FontWeight::NORMAL,
-                    theme::MUTED,
-                ))
-                .child(view().flex_1()),
-        )
 }
 
 fn folder_row(s: &State, index: usize) -> impl IntoElement + use<> {
@@ -465,54 +532,6 @@ fn folder_row(s: &State, index: usize) -> impl IntoElement + use<> {
         ))
 }
 
-fn drop_zone(s: &State) -> impl IntoElement + use<> {
-    let state = s.clone();
-    let picker = s.clone();
-    let typer = s.clone();
-    view()
-        .test_id("drop-zone")
-        .h(px(110.0))
-        .m(px(12.0))
-        .bg(theme::SURFACE)
-        .border_1()
-        .border_color(theme::BORDER)
-        .rounded(px(999.0))
-        .items_center()
-        .justify_center()
-        .gap(px(4.0))
-        .child(
-            press("add-folder", false, move || pick_folders(&picker))
-                .px(px(8.0))
-                .py(px(6.0))
-                .items_center()
-                .gap(px(4.0))
-                .child(text_line("+ ", 16.0, FontWeight::NORMAL, theme::TEXT))
-                .child(text_line(
-                    state.t(i18n::DROP_DIRECTORY).to_uppercase(),
-                    8.0,
-                    FontWeight::BOLD,
-                    theme::TEXT,
-                ))
-                .child(text_line(
-                    state.t(i18n::BROWSE_HINT).to_uppercase(),
-                    7.0,
-                    FontWeight::NORMAL,
-                    theme::MUTED,
-                )),
-        )
-        .child(
-            press("type-path", false, move || typer.open_add_folder())
-                .px(px(8.0))
-                .py(px(6.0))
-                .child(text_line(
-                    state.t(i18n::TYPE_PATH).to_uppercase(),
-                    7.0,
-                    FontWeight::NORMAL,
-                    theme::MUTED,
-                )),
-        )
-}
-
 fn pick_folders(s: &State) {
     if s.scanning.get() || s.busy.get() {
         return;
@@ -536,29 +555,15 @@ fn pick_folders(s: &State) {
     });
 }
 
-fn scan_button(s: &State) -> impl IntoElement + use<> {
-    let state = s.clone();
-    let disabled = s.scanning.get() || s.busy.get() || s.scan_dirs.get().is_empty();
-    press("scan-button", disabled, move || state.start_scan())
-        .h(px(44.0))
-        .items_center()
-        .justify_center()
-        .bg(theme::TEXT)
-        .child(text_line(
-            format!("{} ↗", s.t(i18n::RUN_GLOBAL_SCAN).to_uppercase()),
-            9.0,
-            FontWeight::BOLD,
-            theme::SURFACE,
-        ))
-}
-
 fn main_panel(s: &State) -> impl IntoElement + use<> {
     view()
         .flex_1()
-        .px(px(16.0))
-        .py(px(12.0))
+        .w_full()
+        .h_full()
+        .bg(theme::BACKGROUND)
+        .px(px(12.0))
+        .py(px(10.0))
         .gap(px(8.0))
-        .child(view().flex_row().justify_end().child(review_button(s)))
         .child(banner(s))
         .child(when(
             {
@@ -584,32 +589,37 @@ fn main_panel(s: &State) -> impl IntoElement + use<> {
 }
 
 fn results(s: &State) -> impl IntoElement + use<> {
-    let scanning = s.scanning;
-    when(move || scanning.get(), {
-        let state = s.clone();
-        move || scanning_panel(&state)
-    })
-    .otherwise({
-        let state = s.clone();
-        move || groups_panel(&state)
-    })
+    view()
+        .flex_1()
+        .gap(px(8.0))
+        .child(scan_strip(s))
+        .child(groups_panel(s))
 }
 
 fn groups_panel(s: &State) -> impl IntoElement + use<> {
     let visible = s.visible;
     let state = s.clone();
-    view()
-        .flex_1()
-        .child(
-            virtual_list(
-                move || visible.with(Vec::len),
-                move |at| group_row(&state, at.index()),
-            )
-            .estimated_item_size(px(190.0))
-            .flex_1()
-            .test_id("duplicate-list"),
+    let empty = s.clone();
+    view().flex_1().w_full().bg(theme::BACKGROUND).child(
+        when(
+            move || visible.get().is_empty(),
+            move || empty_state(&empty),
         )
-        .child(empty_state(s))
+        .otherwise({
+            let state = state.clone();
+            move || {
+                let state = state.clone();
+                virtual_list(
+                    move || visible.with(Vec::len),
+                    move |at| group_row(&state, at.index()),
+                )
+                .estimated_item_size(px(150.0))
+                .flex_1()
+                .bg(theme::BACKGROUND)
+                .test_id("duplicate-list")
+            }
+        }),
+    )
 }
 
 fn empty_state(s: &State) -> impl IntoElement + use<> {
@@ -630,53 +640,30 @@ fn empty_state(s: &State) -> impl IntoElement + use<> {
         move || {
             let title = title.clone();
             let body = body.clone();
-            let state = state.clone();
             view()
-                .test_id("empty-state")
-                .min_h(px(240.0))
+                .flex_1()
+                .w_full()
                 .items_center()
                 .justify_center()
-                .gap(px(8.0))
-                .p(px(24.0))
-                .bg(theme::SURFACE)
-                .border_1()
-                .border_color(theme::BORDER)
+                .bg(theme::BACKGROUND)
                 .child(
-                    text(title.to_uppercase())
-                        .font_family(theme::DISPLAY_FONT)
-                        .text_size(px(30.0))
-                        .text_color(theme::TEXT),
+                    view()
+                        .test_id("empty-state")
+                        .items_center()
+                        .gap(px(6.0))
+                        .child(
+                            text(title.to_uppercase())
+                                .font_family(theme::DISPLAY_FONT)
+                                .text_size(px(20.0))
+                                .text_color(theme::TEXT),
+                        )
+                        .child(
+                            text(body)
+                                .font_family(theme::MONO_FONT)
+                                .text_size(px(10.0))
+                                .text_color(theme::MUTED),
+                        ),
                 )
-                .child(
-                    text(body)
-                        .font_family(theme::MONO_FONT)
-                        .text_size(px(10.0))
-                        .text_color(theme::MUTED),
-                )
-                .child(when(
-                    move || available,
-                    move || {
-                        let press_state = state.clone();
-                        press("empty-scan", false, move || {
-                            if press_state
-                                .add_folder(&press_state.cfg.default_dir.to_string_lossy())
-                            {
-                                press_state.start_scan();
-                            }
-                        })
-                        .px(px(12.0))
-                        .py(px(7.0))
-                        .bg(theme::ACCENT)
-                        .border_1()
-                        .border_color(theme::TEXT)
-                        .child(text_line(
-                            state.t(i18n::SCAN_DEFAULT_FOLDER).to_uppercase(),
-                            9.0,
-                            FontWeight::BOLD,
-                            theme::TEXT,
-                        ))
-                    },
-                ))
         },
     )
 }
@@ -689,8 +676,8 @@ fn group_row(s: &State, index: usize) -> impl IntoElement + use<> {
     let state = s.clone();
     view()
         .flex_row()
-        .p(px(10.0))
-        .gap(px(12.0))
+        .p(px(8.0))
+        .gap(px(8.0))
         .bg(theme::SURFACE)
         .border_1()
         .border_color(theme::BORDER)
@@ -727,13 +714,13 @@ fn preview(group: &DuplicateGroup) -> impl IntoElement + use<> {
         .unwrap_or_default();
     let (a, b) = gradient(&group.md5);
     view()
-        .w(px(180.0))
+        .w(px(140.0))
         .flex_shrink_0()
-        .gap(px(5.0))
+        .gap(px(4.0))
         .child(
             view()
                 .w_full()
-                .h(px(116.0))
+                .h(px(80.0))
                 .border_1()
                 .border_color(theme::BORDER)
                 .bg_linear(deg(135.0))
@@ -907,108 +894,6 @@ fn status_box(checked: bool) -> impl IntoElement + use<> {
         })
 }
 
-fn bottom_bar(s: &State) -> impl IntoElement + use<> {
-    let state = s.clone();
-    view()
-        .test_id("bottom-bar")
-        .flex_row()
-        .items_center()
-        .gap(px(14.0))
-        .px(px(20.0))
-        .py(px(7.0))
-        .bg(theme::TEXT)
-        .child(text_line(
-            s.t(i18n::AUTO_SELECT_POLICY).to_uppercase(),
-            8.0,
-            FontWeight::BOLD,
-            theme::SURFACE,
-        ))
-        .child(policy_toggle(
-            s,
-            i18n::KEEP_NEWEST,
-            "policy-newest",
-            appmodel::KeepPolicy::Newest,
-        ))
-        .child(policy_toggle(
-            s,
-            i18n::KEEP_OLDEST,
-            "policy-oldest",
-            appmodel::KeepPolicy::Oldest,
-        ))
-        .child(policy_toggle(
-            s,
-            i18n::KEEP_BY_PATH,
-            "policy-path",
-            appmodel::KeepPolicy::ByPath,
-        ))
-        .child(
-            press(
-                "clear-choices",
-                s.keep.get().is_empty() || s.scanning.get() || s.busy.get(),
-                move || state.clear_keep(),
-            )
-            .px(px(6.0))
-            .py(px(4.0))
-            .child(text_line(
-                s.t(i18n::CLEAR).to_uppercase(),
-                8.0,
-                FontWeight::NORMAL,
-                theme::SURFACE,
-            )),
-        )
-        .child(view().flex_1())
-}
-
-fn policy_toggle(
-    s: &State,
-    key: &'static str,
-    test_id: &'static str,
-    policy: appmodel::KeepPolicy,
-) -> impl IntoElement + use<> {
-    let state = s.clone();
-    let selected = s.policy_selected(policy);
-    press(
-        test_id,
-        s.scanning.get() || s.busy.get() || s.groups.get().is_empty(),
-        move || state.apply_keep_policy(policy),
-    )
-    .flex_row()
-    .items_center()
-    .gap(px(6.0))
-    .px(px(4.0))
-    .py(px(4.0))
-    .child(status_box(selected))
-    .child(text_line(
-        s.t(key).to_uppercase(),
-        8.0,
-        FontWeight::BOLD,
-        theme::SURFACE,
-    ))
-}
-
-fn review_button(s: &State) -> impl IntoElement + use<> {
-    let state = s.clone();
-    let label = s.review_label();
-    press(
-        "delete-files",
-        s.plan().targets.is_empty() || s.scanning.get() || s.busy.get(),
-        move || state.open_confirm(),
-    )
-    .px(px(16.0))
-    .py(px(8.0))
-    .items_center()
-    .bg(theme::ACCENT)
-    .border_1()
-    .border_color(theme::TEXT)
-    .child(
-        text(label)
-            .font_family(theme::DISPLAY_FONT)
-            .text_size(px(20.0))
-            .text_color(theme::TEXT)
-            .truncate(),
-    )
-}
-
 fn banner(s: &State) -> impl IntoElement + use<> {
     let state = s.clone();
     when(
@@ -1045,91 +930,55 @@ fn banner(s: &State) -> impl IntoElement + use<> {
     )
 }
 
-fn scanning_panel(s: &State) -> impl IntoElement + use<> {
+fn scan_strip(s: &State) -> impl IntoElement + use<> {
     let state = s.clone();
-    view()
-        .flex_1()
-        .items_center()
-        .justify_center()
-        .gap(px(10.0))
-        .p(px(18.0))
-        .bg(theme::SURFACE)
-        .border_1()
-        .border_color(theme::BORDER)
-        .child(
-            text(s.t(i18n::SCANNING).to_uppercase())
-                .font_family(theme::DISPLAY_FONT)
-                .text_size(px(34.0))
-                .text_color(theme::TEXT),
-        )
-        .child(
-            text_line(s.scan_roots_label(), 9.0, FontWeight::NORMAL, theme::MUTED)
-                .test_id("scan-root"),
-        )
-        .child(gauge::view(s))
-        .child(
-            text({
-                let state = state.clone();
-                move || speed_text(state.progress.get().speed)
-            })
-            .font_family(theme::DISPLAY_FONT)
-            .text_size(px(32.0))
-            .text_color(theme::TEXT)
-            .test_id("scan-speed"),
-        )
-        .child(text_line_dyn(
-            {
-                let state = state.clone();
-                move || {
-                    let progress = state.progress.get();
-                    state.tf(
-                        i18n::SCAN_STATS,
-                        &[
-                            &format::bytes(progress.hashed),
-                            &state.file_count(progress.done),
-                            &progress.skipped,
-                            &progress.errors,
-                        ],
-                    )
-                }
-            },
-            9.0,
-            FontWeight::NORMAL,
-            theme::MUTED,
-        ))
-        .child(text_line_dyn(
-            {
-                let state = state.clone();
-                move || {
-                    state.tf(
-                        i18n::ELAPSED,
-                        &[&format_duration(state.progress.get().elapsed)],
-                    )
-                }
-            },
-            9.0,
-            FontWeight::NORMAL,
-            theme::MUTED,
-        ))
-        .child(
+    let scanning = s.scanning;
+    when(
+        move || scanning.get(),
+        move || {
+            let progress = state.progress.get();
+            let stats = state.tf(
+                i18n::SCAN_STATS,
+                &[
+                    &format::bytes(progress.hashed),
+                    &state.file_count(progress.done),
+                    &progress.skipped,
+                    &progress.errors,
+                ],
+            );
+            let elapsed = state.tf(i18n::ELAPSED, &[&format_duration(progress.elapsed)]);
             view()
-                .flex_row()
-                .items_center()
-                .gap(px(10.0))
-                .child(app_button(
-                    s.t(i18n::CANCEL_SCAN),
-                    "cancel-scan",
-                    ButtonKind::Secondary,
-                    false,
-                    move || state.cancel_scan(),
-                ))
-                .child(text_line(
-                    s.t(i18n::CANCEL_SCAN_HINT),
-                    9.0,
-                    FontWeight::NORMAL,
-                    theme::MUTED,
-                )),
-        )
+                .test_id("scan-strip")
+                .w_full()
+                .px(px(10.0))
+                .py(px(7.0))
+                .gap(px(5.0))
+                .bg(theme::SURFACE)
+                .border_1()
+                .border_color(theme::BORDER)
+                .child(
+                    view()
+                        .flex_row()
+                        .items_center()
+                        .gap(px(12.0))
+                        .child(
+                            text(state.t(i18n::SCANNING).to_uppercase())
+                                .font_family(theme::DISPLAY_FONT)
+                                .text_size(px(18.0))
+                                .text_color(theme::TEXT),
+                        )
+                        .child(text_line(stats, 8.0, FontWeight::NORMAL, theme::MUTED).flex_1())
+                        .child(
+                            text(speed_text(progress.speed))
+                                .font_family(theme::DISPLAY_FONT)
+                                .text_size(px(14.0))
+                                .text_color(theme::TEXT)
+                                .test_id("scan-speed"),
+                        )
+                        .child(text_line(elapsed, 8.0, FontWeight::NORMAL, theme::MUTED)),
+                )
+        },
+    )
 }
 
 fn note_text(s: &State) -> impl IntoElement + use<> {
@@ -1164,6 +1013,7 @@ fn add_folder_dialog(s: &State) -> impl IntoElement + use<> {
             let state = state.clone();
             let close = state.clone();
             let paste = state.clone();
+            let browse = state.clone();
             let confirm = state.clone();
             let cancel = state.clone();
             view()
@@ -1236,6 +1086,13 @@ fn add_folder_dialog(s: &State) -> impl IntoElement + use<> {
                                     ButtonKind::Secondary,
                                     false,
                                     move || paste.paste_path(),
+                                ))
+                                .child(app_button(
+                                    state.t(i18n::BROWSE),
+                                    "browse-folder",
+                                    ButtonKind::Secondary,
+                                    false,
+                                    move || pick_folders(&browse),
                                 )),
                         )
                         .child(when(
@@ -1366,6 +1223,7 @@ fn settings_dialog(s: &State) -> impl IntoElement + use<> {
             let state = state.clone();
             let close = state.clone();
             let close_button = state.clone();
+            let clear = state.clone();
             view()
                 .absolute()
                 .inset(px(0.0))
@@ -1390,7 +1248,7 @@ fn settings_dialog(s: &State) -> impl IntoElement + use<> {
                         .border_2()
                         .border_color(theme::BORDER)
                         .p(px(20.0))
-                        .gap(px(12.0))
+                        .gap(px(10.0))
                         .child(
                             text(state.t(i18n::SETTINGS).to_uppercase())
                                 .font_family(theme::DISPLAY_FONT)
@@ -1420,16 +1278,94 @@ fn settings_dialog(s: &State) -> impl IntoElement + use<> {
                                     "lang-zh",
                                 )),
                         )
-                        .child(view().flex_row().justify_end().child(app_button(
-                            state.t(i18n::CLOSE),
-                            "settings-close",
-                            ButtonKind::Secondary,
-                            false,
-                            move || close_button.settings.set(false),
-                        ))),
+                        .child(text_line(
+                            state.t(i18n::AUTO_SELECT_POLICY).to_uppercase(),
+                            8.0,
+                            FontWeight::BOLD,
+                            theme::MUTED,
+                        ))
+                        .child(
+                            view()
+                                .gap(px(4.0))
+                                .child(policy_option(
+                                    &state,
+                                    i18n::KEEP_NEWEST,
+                                    "policy-newest",
+                                    appmodel::KeepPolicy::Newest,
+                                ))
+                                .child(policy_option(
+                                    &state,
+                                    i18n::KEEP_OLDEST,
+                                    "policy-oldest",
+                                    appmodel::KeepPolicy::Oldest,
+                                ))
+                                .child(policy_option(
+                                    &state,
+                                    i18n::KEEP_BY_PATH,
+                                    "policy-path",
+                                    appmodel::KeepPolicy::ByPath,
+                                )),
+                        )
+                        .child(
+                            view()
+                                .flex_row()
+                                .justify_end()
+                                .gap(px(8.0))
+                                .child(app_button(
+                                    state.t(i18n::CLEAR),
+                                    "clear-choices",
+                                    ButtonKind::Secondary,
+                                    state.keep.get().is_empty()
+                                        || state.scanning.get()
+                                        || state.busy.get(),
+                                    move || clear.clear_keep(),
+                                ))
+                                .child(app_button(
+                                    state.t(i18n::CLOSE),
+                                    "settings-close",
+                                    ButtonKind::Secondary,
+                                    false,
+                                    move || close_button.settings.set(false),
+                                )),
+                        ),
                 )
         },
     )
+}
+
+fn policy_option(
+    s: &State,
+    key: &'static str,
+    test_id: &'static str,
+    policy: appmodel::KeepPolicy,
+) -> impl IntoElement + use<> {
+    let state = s.clone();
+    let selected = s.policy_selected(policy);
+    let disabled = s.scanning.get() || s.busy.get() || s.groups.get().is_empty();
+    press(test_id, disabled, move || state.apply_keep_policy(policy))
+        .flex_row()
+        .items_center()
+        .gap(px(8.0))
+        .px(px(8.0))
+        .py(px(6.0))
+        .border_1()
+        .border_color(if selected {
+            theme::ACCENT
+        } else {
+            theme::BORDER
+        })
+        .bg(if selected {
+            theme::SUCCESS_SOFT
+        } else {
+            theme::SURFACE
+        })
+        .child(status_box(selected))
+        .child(text_line(
+            s.t(key).to_uppercase(),
+            9.0,
+            FontWeight::BOLD,
+            theme::TEXT,
+        ))
 }
 
 fn language_option(

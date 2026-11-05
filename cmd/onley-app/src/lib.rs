@@ -1,7 +1,6 @@
 //! Onley's desktop client, written in Rust with NSH.
 
 mod categories;
-mod gauge;
 mod state;
 mod theme;
 mod ui;

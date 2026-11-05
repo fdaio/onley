@@ -148,6 +148,7 @@ pub const ARCHIVES: &str = "archives";
 pub const SYSTEM: &str = "system";
 pub const SEARCH: &str = "search";
 pub const SOURCE_FOLDERS: &str = "sourceFolders";
+pub const FILE_TYPES: &str = "fileTypes";
 pub const ALL_FOLDERS: &str = "allFolders";
 pub const DROP_DIRECTORY: &str = "dropDirectory";
 pub const RUN_GLOBAL_SCAN: &str = "runGlobalScan";
@@ -167,6 +168,7 @@ pub const PERMISSION_READ_ERRORS: &str = "permissionReadErrors";
 pub const PERMISSION_FOLDER: &str = "permissionFolder";
 pub const PERMISSION_INDEX: &str = "permissionIndex";
 pub const PASTE_PATH: &str = "pastePath";
+pub const BROWSE: &str = "browse";
 pub const CLIPBOARD_EMPTY: &str = "clipboardEmpty";
 pub const RECENT_FOLDERS: &str = "recentFolders";
 pub const PATH_USABLE: &str = "pathUsable";
@@ -285,6 +287,7 @@ fn english(key: &str) -> Option<&'static str> {
         "system" => "System",
         "search" => "Search",
         "sourceFolders" => "Source folders",
+        "fileTypes" => "File types",
         "allFolders" => "All folders",
         "dropDirectory" => "Drop directory here",
         "runGlobalScan" => "Run global scan",
@@ -314,6 +317,7 @@ fn english(key: &str) -> Option<&'static str> {
             "Cannot open the index: permission denied. Check the permissions on ~/.onley."
         }
         "pastePath" => "Paste",
+        "browse" => "Browse…",
         "clipboardEmpty" => "The clipboard holds no folder or path.",
         "recentFolders" => "Recent folders",
         "pathUsable" => "Folder can be added.",
@@ -433,6 +437,7 @@ fn chinese(key: &str) -> Option<&'static str> {
         "system" => "系统",
         "search" => "搜索",
         "sourceFolders" => "源文件夹",
+        "fileTypes" => "文件类型",
         "allFolders" => "全部文件夹",
         "dropDirectory" => "拖入文件夹",
         "runGlobalScan" => "全局扫描",
@@ -456,6 +461,7 @@ fn chinese(key: &str) -> Option<&'static str> {
         }
         "permissionIndex" => "无法打开索引：权限不足。请检查 ~/.onley 的权限。",
         "pastePath" => "粘贴",
+        "browse" => "浏览…",
         "clipboardEmpty" => "剪贴板里没有文件夹或路径。",
         "recentFolders" => "最近使用",
         "pathUsable" => "可以添加该文件夹。",

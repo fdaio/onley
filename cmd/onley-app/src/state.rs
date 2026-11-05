@@ -145,6 +145,7 @@ pub struct State {
     pub path_state: Signal<PathInfo>,
     pub recent: Signal<Vec<String>>,
     pub settings: Signal<bool>,
+    pub filters: Signal<bool>,
     pub keep: Signal<HashMap<String, String>>,
     pub keep_policy: Signal<KeepPolicy>,
     pub category: Signal<Category>,
@@ -158,8 +159,6 @@ pub struct State {
     pub note_success: Signal<bool>,
     pub confirm: Signal<bool>,
     pub lang: Signal<i18n::Lang>,
-    pub speed_max: Signal<f64>,
-    pub needle: Signal<f64>,
     pub cancel: Rc<RefCell<Option<Arc<AtomicBool>>>>,
     pub owner: Owner,
 }
@@ -209,6 +208,7 @@ impl State {
             path_state: signal(PathInfo::default()),
             recent: signal(recent),
             settings: signal(false),
+            filters: signal(false),
             keep: signal(HashMap::new()),
             keep_policy: signal(policy),
             category: signal(Category::All),
@@ -222,8 +222,6 @@ impl State {
             note_success: signal(false),
             confirm: signal(false),
             lang: signal(lang),
-            speed_max: signal(40.0),
-            needle: signal(0.0),
             cancel: Rc::new(RefCell::new(None)),
             owner: Owner::current(),
         };
@@ -309,15 +307,11 @@ impl State {
             .into_iter()
             .filter(|group| {
                 if category != Category::All
-                    && category != Category::Search
                     && categories::file_category(&group.files[0].name) != category
                 {
                     return false;
                 }
-                if category == Category::Search
-                    && !query.is_empty()
-                    && !categories::group_matches(group, &query)
-                {
+                if !query.is_empty() && !categories::group_matches(group, &query) {
                     return false;
                 }
                 true
@@ -629,15 +623,6 @@ impl State {
         self.keep.set(HashMap::new());
     }
 
-    pub fn scan_roots_label(&self) -> String {
-        let roots = self.scan_dirs.get();
-        match roots.len() {
-            0 => self.t(i18n::NO_FOLDERS),
-            1 => display_path(&roots[0], &self.cfg.home),
-            _ => i18n::folder_count(self.lang.get(), roots.len()),
-        }
-    }
-
     /// Starts a scan of every selected root.
     pub fn start_scan(&self) {
         if self.db.is_none() || self.scanning.get() || self.busy.get() {
@@ -675,8 +660,6 @@ impl State {
         self.keep.set(HashMap::new());
         self.confirm.set(false);
         self.progress.set(ScanProgress::default());
-        self.speed_max.set(40.0);
-        self.needle.set(0.0);
         self.scanning.set(true);
         self.message.set(String::new());
         self.set_note("", false);
@@ -764,7 +747,7 @@ impl State {
             }
 
             let now = Instant::now();
-            if now.duration_since(last_draw) >= Duration::from_millis(80) || finished {
+            if now.duration_since(last_draw) >= Duration::from_millis(200) || finished {
                 last_draw = now;
                 progress.hashed = hashed;
                 progress.speed = appmodel::rate(
@@ -775,7 +758,6 @@ impl State {
                 progress.elapsed = now - started;
                 let snapshot = progress.clone();
                 self.progress.set(snapshot);
-                self.animate_speed(progress.speed);
             }
 
             if finished && rx.try_recv().is_err() {
@@ -788,7 +770,6 @@ impl State {
         let cancelled = cancel.load(Ordering::Relaxed);
         self.scanning.set(false);
         self.cancel.replace(None);
-        self.needle.set(0.0);
         self.progress.set(progress.clone());
         if cancelled {
             self.set_note(self.t(i18n::SCAN_CANCELED), false);
@@ -815,20 +796,6 @@ impl State {
             self.message.set(message);
         }
         self.refresh_async();
-    }
-
-    fn animate_speed(&self, bytes_per_second: f64) {
-        let mb = bytes_per_second / (1024.0 * 1024.0);
-        let ceiling = appmodel::gauge_max(self.speed_max.get(), mb);
-        if (ceiling - self.speed_max.get()).abs() > f64::EPSILON {
-            self.speed_max.set(ceiling);
-        }
-        let percent = if ceiling > 0.0 {
-            (mb / ceiling * 100.0).clamp(0.0, 100.0)
-        } else {
-            0.0
-        };
-        self.needle.set(percent);
     }
 
     pub fn cancel_scan(&self) {
