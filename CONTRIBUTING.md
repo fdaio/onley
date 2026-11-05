@@ -22,8 +22,8 @@ write code.
 
 ## Development setup
 
-onley requires Rust 1.88 or newer. The desktop client uses NSH. Native macOS UI
-tests also need Xcode.
+onley requires Rust 1.88 or newer. The desktop client uses NSH. The real-window
+UI test also needs Xcode and the `nsh` command.
 
 ```sh
 git clone https://github.com/fdaio/onley
@@ -39,15 +39,15 @@ The desktop client builds on macOS:
 make app        # package the macOS app
 ```
 
-Run the native macOS UI tests from the app directory:
+Run the real-window UI test. The script creates a temporary index and removes
+the files the test deletes:
 
 ```sh
-cd cmd/onley-app
-go tool nsgo test -target macos
+./scripts/real-window-test.sh
 ```
 
-CI runs `make lint` and `make test` on every pull request. A pull request must
-pass both.
+CI runs the same format, lint and test checks on every pull request. A pull
+request must pass them.
 
 ## Reporting a bug
 

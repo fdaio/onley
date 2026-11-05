@@ -45,8 +45,6 @@ pub fn root(s: &State) -> impl IntoElement + use<> {
         let _ = s.adding_folder.get();
         let _ = s.recent.get();
         let _ = s.settings.get();
-        let _ = s.progress.get();
-        let _ = s.speed_max.get();
         let _ = s.scan_dirs.get();
         main_view(&s)
     })
@@ -1048,7 +1046,6 @@ fn banner(s: &State) -> impl IntoElement + use<> {
 }
 
 fn scanning_panel(s: &State) -> impl IntoElement + use<> {
-    let progress = s.progress.get();
     let state = s.clone();
     view()
         .flex_1()
@@ -1071,28 +1068,45 @@ fn scanning_panel(s: &State) -> impl IntoElement + use<> {
         )
         .child(gauge::view(s))
         .child(
-            text(speed_text(progress.speed))
-                .font_family(theme::DISPLAY_FONT)
-                .text_size(px(32.0))
-                .text_color(theme::TEXT)
-                .test_id("scan-speed"),
+            text({
+                let state = state.clone();
+                move || speed_text(state.progress.get().speed)
+            })
+            .font_family(theme::DISPLAY_FONT)
+            .text_size(px(32.0))
+            .text_color(theme::TEXT)
+            .test_id("scan-speed"),
         )
-        .child(text_line(
-            s.tf(
-                i18n::SCAN_STATS,
-                &[
-                    &format::bytes(progress.hashed),
-                    &s.file_count(progress.done),
-                    &progress.skipped,
-                    &progress.errors,
-                ],
-            ),
+        .child(text_line_dyn(
+            {
+                let state = state.clone();
+                move || {
+                    let progress = state.progress.get();
+                    state.tf(
+                        i18n::SCAN_STATS,
+                        &[
+                            &format::bytes(progress.hashed),
+                            &state.file_count(progress.done),
+                            &progress.skipped,
+                            &progress.errors,
+                        ],
+                    )
+                }
+            },
             9.0,
             FontWeight::NORMAL,
             theme::MUTED,
         ))
-        .child(text_line(
-            s.tf(i18n::ELAPSED, &[&format_duration(progress.elapsed)]),
+        .child(text_line_dyn(
+            {
+                let state = state.clone();
+                move || {
+                    state.tf(
+                        i18n::ELAPSED,
+                        &[&format_duration(state.progress.get().elapsed)],
+                    )
+                }
+            },
             9.0,
             FontWeight::NORMAL,
             theme::MUTED,

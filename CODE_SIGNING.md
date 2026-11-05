@@ -6,7 +6,7 @@ Windows code signing is in progress. The Windows CLI and desktop executables in
 the current releases are not code signed yet.
 
 Release builds of the macOS desktop app are signed with an Apple Developer ID
-and notarized. Linux packages are not code signed.
+and notarized. Linux builds are not code signed.
 
 ## Scope
 
@@ -32,7 +32,7 @@ The project is seeking free code signing from
 - Only artifacts built from the tagged commit in that workflow are eligible for
   signing. Local builds are not signed.
 - The desktop build sets the product name and version from
-  `cmd/onley-app/nsgo.yaml`. Release assets use the tag as their version. The CLI
+  `cmd/onley-app/nsh.json`. Release assets use the tag as their version. The CLI
   binary does not embed version metadata.
 
 ## Roles
@@ -45,7 +45,7 @@ The project is seeking free code signing from
 ## Signing process after approval
 
 1. A `v*` tag starts the release workflow.
-2. CI builds the Windows CLI and desktop packages.
+2. CI builds the Windows CLI. The Windows desktop app builds from source on Windows.
 3. The Windows executables are submitted to SignPath.io.
 4. An approver reviews the signing request.
 5. SignPath signs the executables, and the workflow packages the signed files.

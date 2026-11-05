@@ -47,12 +47,8 @@ brew install --cask onley
 ```
 
 发布范围为 darwin 与 linux 的 amd64 / arm64，以及 windows 的 amd64。
-所有 release 资产共用一个 `checksums.txt`。桌面客户端预览同时发布
-macOS arm64/x64、Windows x64 与 Linux x64。见
+桌面客户端预览发布 macOS arm64；Windows 与 Linux 桌面需在各自系统上构建。见
 [releases](https://github.com/fdaio/onley/releases)。
-
-`go install` 不可用，也没有提供：module 路径是 `onley`，不是一个可解析的仓库位置。
-要修就得改每个包的 import 路径，因此没有做。
 
 从源码构建：
 
@@ -79,10 +75,10 @@ NSH 桌面客户端覆盖日常清理闭环：扫描一个或多个文件夹、�
 文件夹内，会先归并到父目录再扫描；归并按绝对路径判断，不解析符号链接别名。顶部显示
 已索引文件、重复组和可释放空间；标签栏按文件类型过滤，搜索按文件名或路径过滤。底部
 栏是自动选择策略：保留最新、保留最旧或按路径保留。每组卡片显示渐变预览、文件标签和
-每个副本的完整路径；原始副本是路径排序的第一个。清除会撤销全部保留选择，检查并删除
+每个副本的路径；原始副本是路径排序的第一个。清除会撤销全部保留选择，检查并删除
 会打开确认框。该策略不会绕过确认直接删除。它和 CLI 共用 `~/.onley/local.db` 索引。
 macOS 发布包使用 Developer ID 签名并已公证；本地 `make app` 构建未签名。Windows 代码
-签名正在申请中，Linux 包仍未签名，打开前请阅读下方说明。
+签名正在申请中，Linux 构建未签名，打开前请阅读下方说明。
 
 macOS 构建并打开：
 
@@ -97,7 +93,7 @@ open dist/Onley.app
 make install
 ```
 
-它会先重新构建。Homebrew 安装的版本也在同一位置，需要恢复时执行
+它会先重新打包。Homebrew 安装的版本也在同一位置，需要恢复时执行
 `brew reinstall --cask onley`。想让两者共存，可以指定 `INSTALL_DIR`：
 
 ```sh
@@ -110,28 +106,32 @@ make install INSTALL_DIR="$HOME/Applications"
 本轮以 macOS 为运行验证目标。
 
 客户端使用黑白+粉色+浅绿的 brutalist 配色，只做桌面端。界面支持 English 与
-简体中文，首次启动跟随系统语言；左侧栏底部的 EN/中文按钮可切换，选择会被记住。
+简体中文，首次启动跟随系统语言；标签栏右端的设置按钮可打开语言选择，选择会被记住。
 文案位于 `crates/onley-core/src/i18n.rs`，新增语言目录即可扩展。
 
 手机与 Web 客户端需要 onley 提供本地服务 API，本预览不做。
 客户端不支持 `watch`、replica、`config` 和自定义 `-db`，这些继续用 CLI。
-扫描路径需要手动输入，暂未提供原生目录选择器。扫描与删除只操作默认
+点击拖放区可打开系统文件夹选择器，也可拖入文件夹；「输入路径」按钮会打开带剪贴板粘贴与
+最近目录的对话框。扫描与删除只操作默认
 索引，删除不可撤销。删除前会校验文件大小和修改时间；旧版本建立的索引需要
 重新扫描一次才能记录 mtime。Onley 不会删除正在运行的自身程序；如果自身出现
 在重复组中，它只能作为保留副本，Windows 也会锁定运行中的 exe。
-Windows 与 Linux 的原生菜单栏默认隐藏，按 Alt 显示；它由系统绘制，不跟随应用
-配色。macOS 的顶部菜单栏跟随系统外观，切换深色模式后与 Midnight Terminal
-窗口一致。macOS 发布包已签名并公证，首次打开不再需要右键选择“打开”；本地
-`make app` 构建未签名。Windows 代码签名正在申请中，Linux 包仍未签名。
+客户端只设置窗口标题，并使用 NSH 默认的应用菜单。macOS 发布包已签名并公证，首次打开不再需要右键选择“打开”；本地
+`make app` 构建未签名。Windows 代码签名正在申请中，Linux 构建未签名。
 Windows 上 SmartScreen 可能提示风险，Smart App Control 可能阻止未签名应用；
-Linux 包打开前请核对 release checksum。第三方声明见
+Linux 构建打开前请核对 release checksum。第三方声明见
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
-无头测试随仓库测试一起跑；macOS 原生 UI 测试需要 Xcode：
+无头测试随仓库测试一起跑：
 
 ```sh
-go test ./...
-cd cmd/onley-app && go tool nsgo test -target macos
+cargo test --workspace
+```
+
+真机窗口测试需要 macOS、Xcode 与 `nsh` 命令。脚本会准备临时索引，并删除测试中删掉的文件：
+
+```sh
+./scripts/real-window-test.sh
 ```
 
 ## 代码签名政策

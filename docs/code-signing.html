@@ -35,7 +35,7 @@
     </p>
     <p>
       Release builds of the macOS desktop app are signed with an Apple Developer
-      ID and notarized. Linux packages are not code signed.
+      ID and notarized. Linux builds are not code signed.
     </p>
 
     <h2>Signing provider</h2>
@@ -63,7 +63,7 @@
       <li>License: MIT</li>
       <li>Builds: GitHub Actions, <code>.github/workflows/release.yml</code>, tag <code>v*</code></li>
       <li>Only artifacts built from the tagged commit in that workflow are eligible for signing. Local builds are not signed.</li>
-      <li>The desktop build sets the product name and version from <code>cmd/onley-app/nsgo.yaml</code>. Release assets use the tag as their version. The CLI binary does not embed version metadata.</li>
+      <li>The desktop build sets the product name and version from <code>cmd/onley-app/nsh.json</code>. Release assets use the tag as their version. The CLI binary does not embed version metadata.</li>
     </ul>
 
     <h2>Roles</h2>
@@ -76,7 +76,7 @@
     <h2>Signing process after approval</h2>
     <ol>
       <li>A <code>v*</code> tag starts the release workflow.</li>
-      <li>CI builds the Windows CLI and desktop packages.</li>
+      <li>CI builds the Windows CLI. The Windows desktop app builds from source on Windows.</li>
       <li>The Windows executables are submitted to SignPath.io.</li>
       <li>An approver reviews the signing request.</li>
       <li>SignPath signs the executables, and the workflow packages the signed files.</li>
