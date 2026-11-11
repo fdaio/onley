@@ -4,7 +4,10 @@ test("cleans the duplicate files in a real window", async () => {
   const app = await open(".", { storage: { language: "en" } });
   await app.waitFor("id:scan-button");
   await app.waitFor("text:one.txt");
+  await app.press("id:settings");
+  await app.waitFor("id:settings-dialog");
   await app.press("id:policy-path");
+  await app.press("id:settings-close");
   await app.press("id:delete-files");
   await app.waitFor("text:DELETE DUPLICATES?");
   await app.press("id:delete-confirm");
