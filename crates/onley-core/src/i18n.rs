@@ -181,6 +181,9 @@ pub const REMOVED_FOLDERS: &str = "removedFolders";
 pub const SETTINGS: &str = "settings";
 pub const LANGUAGE: &str = "language";
 pub const CLOSE: &str = "close";
+pub const ABOUT: &str = "about";
+pub const VERSION: &str = "version";
+pub const DATA_DIR: &str = "dataDir";
 
 fn english(key: &str) -> Option<&'static str> {
     Some(match key {
@@ -330,6 +333,9 @@ fn english(key: &str) -> Option<&'static str> {
         "settings" => "Settings",
         "language" => "Language",
         "close" => "Close",
+        "about" => "About",
+        "version" => "Version",
+        "dataDir" => "Data folder",
         _ => return None,
     })
 }
@@ -474,6 +480,9 @@ fn chinese(key: &str) -> Option<&'static str> {
         "settings" => "设置",
         "language" => "语言",
         "close" => "关闭",
+        "about" => "关于",
+        "version" => "版本",
+        "dataDir" => "数据目录",
         _ => return None,
     })
 }
