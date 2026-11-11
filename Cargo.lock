@@ -3528,7 +3528,7 @@ dependencies = [
 
 [[package]]
 name = "onley"
-version = "0.2.17"
+version = "0.2.18"
 dependencies = [
  "ctrlc",
  "dirs",
@@ -3541,7 +3541,7 @@ dependencies = [
 
 [[package]]
 name = "onley-app"
-version = "0.2.17"
+version = "0.2.18"
 dependencies = [
  "dirs",
  "env_logger",
@@ -3560,7 +3560,7 @@ dependencies = [
 
 [[package]]
 name = "onley-core"
-version = "0.2.17"
+version = "0.2.18"
 dependencies = [
  "axum",
  "dirs",
