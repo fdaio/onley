@@ -5,7 +5,7 @@ use crate::state::{PathStatus, State, display_path};
 use crate::theme;
 use nsh_base::input;
 use nsh_core::{
-    element::{AccessibilityRole, AdaptiveColor, FontWeight, rgb},
+    element::{AccessibilityRole, AccessibilityState, AdaptiveColor, FontWeight, rgb},
     geometry::{deg, px},
     prelude::*,
 };
@@ -459,6 +459,8 @@ fn filters_dialog(s: &State) -> impl IntoElement + use<> {
                 .child(
                     view()
                         .test_id("filters-dialog")
+                        .role(AccessibilityRole::Dialog)
+                        .label("FILTERS")
                         .w(px(420.0))
                         .bg(theme::SURFACE)
                         .border_2()
@@ -685,6 +687,14 @@ fn groups_panel(s: &State) -> impl IntoElement + use<> {
                     move || visible.with(Vec::len),
                     move |at| group_row(&state, at.index()),
                 )
+                .keys(move || {
+                    visible.with(|groups| {
+                        groups
+                            .iter()
+                            .map(|group| group.md5.clone())
+                            .collect::<Vec<_>>()
+                    })
+                })
                 .estimated_item_size(px(150.0))
                 .flex_1()
                 .bg(theme::BACKGROUND)
@@ -1107,6 +1117,8 @@ fn add_folder_dialog(s: &State) -> impl IntoElement + use<> {
                 .child(
                     view()
                         .test_id("add-folder-dialog")
+                        .role(AccessibilityRole::Dialog)
+                        .label(state.t(i18n::ADD_FOLDER))
                         .w(px(500.0))
                         .bg(theme::SURFACE)
                         .border_2()
@@ -1139,6 +1151,23 @@ fn add_folder_dialog(s: &State) -> impl IntoElement + use<> {
                                         .text_color(theme::TEXT)
                                         .placeholder_color(theme::MUTED.light)
                                         .placeholder(state.t(i18n::ADD_FOLDER))
+                                        .accessibility_state({
+                                            let state = state.clone();
+                                            move || AccessibilityState {
+                                                invalid: matches!(
+                                                    state.path_state.get().status,
+                                                    PathStatus::Missing
+                                                        | PathStatus::File
+                                                        | PathStatus::Denied
+                                                        | PathStatus::Unreadable
+                                                ),
+                                                ..Default::default()
+                                            }
+                                        })
+                                        .accessibility_description({
+                                            let state = state.clone();
+                                            move || state.path_hint()
+                                        })
                                         .value({
                                             let state = state.clone();
                                             move || state.scan_path.get()
@@ -1296,6 +1325,9 @@ fn settings_dialog(s: &State) -> impl IntoElement + use<> {
             let close = state.clone();
             let close_button = state.clone();
             let clear = state.clone();
+            let data_dir = nsh_core::element::data_dir()
+                .map(|dir| dir.display().to_string())
+                .unwrap_or_default();
             view()
                 .absolute()
                 .inset(px(0.0))
@@ -1315,6 +1347,8 @@ fn settings_dialog(s: &State) -> impl IntoElement + use<> {
                 .child(
                     view()
                         .test_id("settings-dialog")
+                        .role(AccessibilityRole::Dialog)
+                        .label(state.t(i18n::SETTINGS))
                         .w(px(420.0))
                         .bg(theme::SURFACE)
                         .border_2()
@@ -1378,6 +1412,28 @@ fn settings_dialog(s: &State) -> impl IntoElement + use<> {
                                     appmodel::KeepPolicy::ByPath,
                                 )),
                         )
+                        .child(text_line(
+                            state.t(i18n::ABOUT).to_uppercase(),
+                            8.0,
+                            FontWeight::BOLD,
+                            theme::MUTED,
+                        ))
+                        .child(text_line(
+                            format!("{} {}", state.t(i18n::VERSION), env!("CARGO_PKG_VERSION")),
+                            9.0,
+                            FontWeight::NORMAL,
+                            theme::TEXT,
+                        ))
+                        .child(text_line(
+                            if data_dir.is_empty() {
+                                state.t(i18n::DATA_DIR).to_string()
+                            } else {
+                                format!("{} {}", state.t(i18n::DATA_DIR), data_dir)
+                            },
+                            9.0,
+                            FontWeight::NORMAL,
+                            theme::MUTED,
+                        ))
                         .child(
                             view()
                                 .flex_row()
@@ -1492,6 +1548,8 @@ fn confirm_panel(s: &State) -> impl IntoElement + use<> {
     let delete = state.clone();
     view()
         .test_id("confirm-dialog")
+        .role(AccessibilityRole::AlertDialog)
+        .label(state.t(i18n::DELETE_DUPLICATES))
         .w_full()
         .max_w(px(560.0))
         .bg(theme::SURFACE)
