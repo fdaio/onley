@@ -5,7 +5,7 @@ mod state;
 mod theme;
 mod ui;
 
-use nsh_core::{element::desktop::set_title, prelude::*};
+use nsh_core::{desktop::WindowAttributes, element::desktop::main_window, prelude::*};
 pub use state::Config;
 use std::sync::Mutex;
 
@@ -33,6 +33,8 @@ fn native(_registry: &mut Registry) {}
 #[component]
 pub fn App() -> impl IntoElement {
     let state = state::State::new(take_config());
-    set_title("Onley");
+    let mut attributes = WindowAttributes::default();
+    attributes.title = Some("Onley".to_owned());
+    main_window().set(attributes);
     ui::root(&state)
 }
