@@ -17,3 +17,8 @@ pub mod watcher;
 pub fn is_permission_error(err: &std::io::Error) -> bool {
     err.kind() == std::io::ErrorKind::PermissionDenied
 }
+
+/// Formats a digest as lowercase hex.
+pub(crate) fn hex_digest(bytes: &[u8]) -> String {
+    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
+}

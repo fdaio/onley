@@ -2053,16 +2053,6 @@ checksum = "4facc753ae494aeb6e3c22f839b158aebd4f9270f55cd3c79906c45476c47ab4"
 
 [[package]]
 name = "md-5"
-version = "0.10.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d89e7ee0cfbedfc4da3340218492196241d89eefb6dab27de5df917a6d2e78cf"
-dependencies = [
- "cfg-if",
- "digest 0.10.7",
-]
-
-[[package]]
-name = "md-5"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "69b6441f590336821bb897fb28fc622898ccceb1d6cea3fde5ea86b090c4de98"
@@ -2732,7 +2722,7 @@ dependencies = [
  "block2",
  "dispatch2",
  "env_logger",
- "md-5 0.10.6",
+ "md-5",
  "nsh-base",
  "nsh-core",
  "nsh-engine",
@@ -3206,7 +3196,7 @@ dependencies = [
  "itoa",
  "keccak",
  "libc",
- "md-5 0.11.0",
+ "md-5",
  "memchr",
  "once_cell",
  "p256",

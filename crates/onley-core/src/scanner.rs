@@ -423,7 +423,7 @@ pub fn hash_file(path: &Path, on_read: &mut impl FnMut(i64) -> bool) -> io::Resu
             break;
         }
     }
-    Ok(format!("{:x}", hasher.finalize()))
+    Ok(crate::hex_digest(hasher.finalize().as_slice()))
 }
 
 #[cfg(test)]
@@ -494,7 +494,7 @@ mod tests {
         let record = db.lookup(&path).unwrap().unwrap();
         assert_eq!(
             record.md5,
-            format!("{:x}", Md5::digest(b"a different length"))
+            crate::hex_digest(Md5::digest(b"a different length").as_slice())
         );
     }
 
@@ -518,7 +518,7 @@ mod tests {
         let db = Db::open_in_memory().unwrap();
         assert_eq!(
             index_file(&path, &db).unwrap(),
-            Some(format!("{:x}", Md5::digest(b"hello")))
+            Some(crate::hex_digest(Md5::digest(b"hello").as_slice()))
         );
         assert_eq!(index_file(&path, &db).unwrap(), None);
     }

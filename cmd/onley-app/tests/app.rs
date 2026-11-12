@@ -38,7 +38,10 @@ impl Fixture {
                 }
                 std::fs::write(&path, bytes).unwrap();
                 set_mtime(&path, *mtime);
-                let digest = format!("{:x}", md5::Md5::digest(bytes));
+                let digest: String = md5::Md5::digest(bytes)
+                    .iter()
+                    .map(|byte| format!("{byte:02x}"))
+                    .collect();
                 db.upsert(&FileRecord::new(&path, bytes.len() as i64, digest, *mtime))
                     .unwrap();
             }
