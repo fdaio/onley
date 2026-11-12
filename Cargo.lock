@@ -1019,6 +1019,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "dirs"
+version = "7.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8d57d423b3c82e89b9a24ca3091fee61f456a26edbd28d26c65906f4bc1dcd8f"
+dependencies = [
+ "dirs-sys",
+]
+
+[[package]]
 name = "dirs-sys"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2772,16 +2781,6 @@ checksum = "4facc753ae494aeb6e3c22f839b158aebd4f9270f55cd3c79906c45476c47ab4"
 
 [[package]]
 name = "md-5"
-version = "0.10.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d89e7ee0cfbedfc4da3340218492196241d89eefb6dab27de5df917a6d2e78cf"
-dependencies = [
- "cfg-if",
- "digest 0.10.7",
-]
-
-[[package]]
-name = "md-5"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "69b6441f590336821bb897fb28fc622898ccceb1d6cea3fde5ea86b090c4de98"
@@ -3483,7 +3482,7 @@ name = "onley"
 version = "0.2.19"
 dependencies = [
  "ctrlc",
- "dirs",
+ "dirs 6.0.0",
  "onley-core",
  "rusqlite",
  "serde_json",
@@ -3495,9 +3494,9 @@ dependencies = [
 name = "onley-app"
 version = "0.2.19"
 dependencies = [
- "dirs",
+ "dirs 7.0.0",
  "env_logger",
- "md-5 0.10.6",
+ "md-5",
  "nsh-base",
  "nsh-core",
  "nsh-engine",
@@ -3515,8 +3514,8 @@ name = "onley-core"
 version = "0.2.19"
 dependencies = [
  "axum",
- "dirs",
- "md-5 0.10.6",
+ "dirs 7.0.0",
+ "md-5",
  "notify",
  "rusqlite",
  "same-file",
@@ -4077,7 +4076,7 @@ dependencies = [
  "itoa",
  "keccak",
  "libc",
- "md-5 0.11.0",
+ "md-5",
  "memchr",
  "once_cell",
  "p256",

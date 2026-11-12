@@ -96,6 +96,11 @@ pub fn scan(
     Ok(outcome)
 }
 
+/// Formats a digest as lowercase hex.
+fn hex_digest(bytes: &[u8]) -> String {
+    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
+}
+
 /// Hashes a file in chunks, stopping when `cancel` is set.
 pub fn hash_file(path: &std::path::Path, cancel: &AtomicBool) -> io::Result<String> {
     let mut file = File::open(path)?;
@@ -111,7 +116,7 @@ pub fn hash_file(path: &std::path::Path, cancel: &AtomicBool) -> io::Result<Stri
             return Err(io::Error::new(io::ErrorKind::Interrupted, "scan cancelled"));
         }
     }
-    Ok(format!("{:x}", hasher.finalize()))
+    Ok(hex_digest(hasher.finalize().as_slice()))
 }
 
 /// A library backed by a folder, for the desktop preview and tests.

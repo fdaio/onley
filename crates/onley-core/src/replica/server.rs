@@ -204,7 +204,7 @@ async fn save_field(
         temp,
         filename: filename.to_owned(),
         size,
-        digest: format!("{:x}", hasher.finalize()),
+        digest: crate::hex_digest(hasher.finalize().as_slice()),
     })
 }
 
