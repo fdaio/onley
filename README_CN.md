@@ -28,7 +28,7 @@
 
 按平台下载 release 归档，或使用[下载页面](https://fdaio.github.io/onley/download.html)：
 
-`<版本号>` 是不带前导 `v` 的 release 编号，例如 `0.2.18`。
+`<版本号>` 是不带前导 `v` 的 release 编号，例如 `0.2.19`。
 
 ```sh
 # macOS（Apple silicon）
