@@ -359,6 +359,13 @@ fn replica_check_moves_files_to_the_master() {
     }
 
     let master = format!("http://127.0.0.1:{port}");
+    // The server thread's first call to `serve` compiles on the JIT; wait until it answers.
+    let client = onley_core::replica::Client::new(&master);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    while client.ping().is_err() {
+        assert!(std::time::Instant::now() < deadline, "master did not start");
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
     let out = run_with_home(
         dir.path(),
         &[
