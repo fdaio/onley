@@ -1,7 +1,7 @@
 {
   "name": "Onley",
   "id": "io.github.laotree.onley",
-  "version": "0.2.18",
+  "version": "0.2.19",
   "appearance": "light",
   "singleInstance": true,
   "icon": "assets/Icon.png",
