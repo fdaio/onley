@@ -29,7 +29,7 @@ Website: https://fdaio.github.io/onley/ · [中文](https://fdaio.github.io/onle
 Download a release archive for your platform, or use the [download page](https://fdaio.github.io/onley/download.html):
 
 `<version>` is the release number without the leading `v`, for example
-`0.2.19`.
+`0.2.20`.
 
 ```sh
 # macOS (Apple silicon)
