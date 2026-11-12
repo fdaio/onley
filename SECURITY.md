@@ -57,6 +57,21 @@ query the index and upload files. Run `serve` only on a trusted network, or put
 it behind a reverse proxy, VPN, or firewall. Do not expose the port to the
 public internet.
 
+## Known dependency advisories
+
+The dependency tree is checked against OSV for every release. These advisories
+remain because the fixes are not available where onley can apply them. They are
+reviewed again with each dependency update.
+
+| Advisory | Crate | Why it remains |
+| --- | --- | --- |
+| RUSTSEC-2023-0071 | `rsa` 0.10.0-rc.19 | Comes through `quickjs-jit-stdlib` in NSH. The fixed 0.10.0 release lacks the `sha2` feature that `quickjs-jit-stdlib` requires. onley runs no JavaScript, so this RSA decryption path is not used. |
+| RUSTSEC-2025-0141 | `bincode` 1.3.3 | Unmaintained, not a vulnerability. Comes through `syntect` in NSH. |
+| RUSTSEC-2026-0206 | `rustybuzz` 0.20.1 | Unmaintained, not a vulnerability. Comes through `resvg` in NSH. |
+| RUSTSEC-2026-0192 | `ttf-parser` 0.25.1 | Unmaintained, not a vulnerability. Comes through `resvg` in NSH. |
+
+The SQLite advisory `RUSTSEC-2026-0459` was fixed in v0.2.19 with `rusqlite` 0.42.
+
 ## Out of scope
 
 - Problems that require an attacker to already have full control of the machine
