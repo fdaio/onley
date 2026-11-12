@@ -108,7 +108,7 @@ make install
 make install INSTALL_DIR="$HOME/Applications"
 ```
 
-构建应用需要 Rust 1.88 或更高版本、`nsh` 命令和 Xcode；NSH 版本固定在
+构建应用需要 Rust 1.97 或更高版本、`nsh` 命令和 Xcode；NSH 版本固定在
 `Cargo.toml`。NSH 仍处于 early 阶段、没有稳定 API，升级应作为独立任务。
 `make app` 打包 macOS 应用；Windows 与 Linux 桌面需在各自系统上构建。
 本轮以 macOS 为运行验证目标。
@@ -413,4 +413,4 @@ make lint       # cargo fmt --check 与 cargo clippy
 make clean      # 删除构建产物
 ```
 
-运行环境要求：Rust 1.88 或更高（`Cargo.toml` 声明的版本）
+运行环境要求：Rust 1.97 或更高（`Cargo.toml` 声明的版本）

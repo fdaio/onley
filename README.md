@@ -122,7 +122,7 @@ apart:
 make install INSTALL_DIR="$HOME/Applications"
 ```
 
-Building the app needs Rust 1.88 or newer, the `nsh` command and Xcode. The
+Building the app needs Rust 1.97 or newer, the `nsh` command and Xcode. The
 pinned NSH version is in `Cargo.toml`. NSH is early and has no stable API, so
 upgrade it as a separate task. `make app` packages the macOS app. The Windows
 and Linux desktop builds run on their own systems; the macOS app is the
@@ -455,4 +455,4 @@ make lint       # cargo fmt --check and cargo clippy
 make clean      # remove build output
 ```
 
-Requirements: Rust 1.88 or newer (the version `Cargo.toml` declares)
+Requirements: Rust 1.97 or newer (the version `Cargo.toml` declares)
